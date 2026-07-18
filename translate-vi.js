@@ -1,0 +1,101 @@
+// Automatic CZ -> VI gloss for product names (dictionary-based, works offline).
+// window.viTranslate(czechName) -> Vietnamese subtitle. Unknown words are kept.
+(function(){
+function esc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+function rx(p){return new RegExp('(?<!\\p{L})(?:'+p+')(?!\\p{L})','giu')}
+var PHRASES=[
+ ['SADA t\u011bsn\u011bn\u00ed','B\u1ed9 gio\u0103ng'],
+ ['t\u011bsn\u011bn\u00ed','gio\u0103ng'],
+ ['O krou\u017eky','v\u00f2ng O'],
+ ['krou\u017eky','v\u00f2ng \u0111\u1ec7m'],
+ ['krou\u017eek','v\u00f2ng \u0111\u1ec7m'],
+ ['man\u017eeta do WC','m\u0103ng s\u00f4ng WC'],
+ ['man\u017eeta','m\u0103ng s\u00f4ng'],
+ ['do hadicov\u00fdch spojek','cho kh\u1edbp n\u1ed1i \u1ed1ng m\u1ec1m'],
+ ['hadicov\u00fdch spojek','kh\u1edbp n\u1ed1i \u1ed1ng m\u1ec1m'],
+ ['hadice','\u1ed1ng m\u1ec1m'],
+ ['do \u0161rouben\u00ed','cho \u0111\u1ea7u n\u1ed1i ren'],
+ ['\u0161roubov\u00e1n\u00ed','\u0111\u1ea7u n\u1ed1i ren'],
+ ['\u0161rouben\u00ed','\u0111\u1ea7u n\u1ed1i ren'],
+ ['na nejr\u016fzn\u011bj\u0161\u00ed pou\u017eit\u00ed','\u0111a d\u1ee5ng'],
+ ['na nejr\u016fz\\. pou\u017eit\u00ed','\u0111a d\u1ee5ng'],
+ ['pro kutily','cho th\u1ee3 t\u1ef1 l\u00e0m'],
+ ['u\u017eitkov\u00e1 voda|u\u017eitkovou vodu','n\u01b0\u1edbc sinh ho\u1ea1t'],
+ ['pitn\u00e1 voda|pitnou vodu','n\u01b0\u1edbc u\u1ed1ng'],
+ ['horkovodn\u00ed','n\u01b0\u1edbc n\u00f3ng'],
+ ['topen\u00ed','s\u01b0\u1edfi \u1ea5m'],
+ ['NBR pry\u017e','cao su NBR'],
+ ['SBR pry\u017e','cao su SBR'],
+ ['EPDM pry\u017e','cao su EPDM'],
+ ['pry\u017e(ov[\u00e1\u00e9\u00fd\u00e9])?','cao su'],
+ ['guma|gumov[\u00e1\u00e9\u00fd]','cao su'],
+ ['AL hlin[\u00ed i]k','nh\u00f4m AL'],
+ ['hlin[\u00edi]k(ov[\u00e1\u00e9\u00fd])?','nh\u00f4m'],
+ ['m\u011b\u010f|m\u011bd\u011bn[\u00e1\u00e9\u00fd]','\u0111\u1ed3ng'],
+ ['f[\u00edi]br','s\u1ee3i fibre'],
+ ['ploch[\u00e1\u00e9\u00fd\u00e9]','d\u1eb9t'],
+ ['b\u00edl[\u00e1\u00e9\u00fd\u00e9]','m\u00e0u tr\u1eafng'],
+ ['\u010dern[\u00e1\u00e9\u00fd\u00e9]','m\u00e0u \u0111en'],
+ ['\u0161ed[\u00e1\u00e9\u00fd\u00e9]','m\u00e0u x\u00e1m'],
+ ['star\u00e9 typy','lo\u1ea1i c\u0169'],
+ ['nov\u00e9 typy','lo\u1ea1i m\u1edbi'],
+ ['baterie','v\u00f2i n\u01b0\u1edbc'],
+ ['perl\u00e1tor','\u0111\u1ea7u l\u1ecdc v\u00f2i'],
+ ['sprcha|sprchov[\u00e1\u00e9\u00fd]','v\u00f2i sen'],
+ ['ventil','van'],
+ ['pod hlavici','d\u01b0\u1edbi \u0111\u1ea7u van'],
+ ['hlavice','\u0111\u1ea7u van'],
+ ['p\u0159\u00edruba|p\u0159\u00edrubov[\u00e1\u00e9\u00fd]','m\u1eb7t b\u00edch'],
+ ['MIX','h\u1ed7n h\u1ee3p'],
+ ['smet\u00e1k','ch\u1ed5i qu\u00e9t'],
+ ['ko\u0161t\u011b|kost\u011b','ch\u1ed5i'],
+ ['kart\u00e1\u010d','b\u00e0n ch\u1ea3i'],
+ ['d\u0159ev\u011bn[\u00e1\u00e9\u00fd\u00e9]|d\u0159ev\u011bn\u00e9','b\u1eb1ng g\u1ed7'],
+ ['dr\u00e1t\u011bnk[aey]|dr\u00e1t\u011bnka','mi\u1ebfng c\u1ecd kim lo\u1ea1i'],
+ ['houbi\u010dk[aey]|houbi\u010dka','m\u00fat r\u1eeda ch\u00e9n'],
+ ['houb[aey]|houba','b\u1ecdt bi\u1ec3n'],
+ ['ut\u011brk[aey]|ut\u011brek|ut\u011brka','kh\u0103n lau'],
+ ['hadr na podlahu','gi\u1ebb lau s\u00e0n'],
+ ['hadr','gi\u1ebb lau'],
+ ['mikrovl\u00e1kn[oa]|z mikrovl\u00e1kna','microfiber'],
+ ['n\u00e1sad(ou|a)','c\u00e1n'],
+ ['s ty\u010d\u00ed','c\u00f3 c\u00e1n'],
+ ['na n\u00e1dob\u00ed','r\u1eeda b\u00e1t'],
+ ['na myt\u00ed auta|na auto','r\u1eeda xe'],
+ ['na myt\u00ed','\u0111\u1ec3 r\u1eeda'],
+ ['na okna','lau k\u00ednh'],
+ ['mas\u00e1\u017en\u00ed','m\u00e1t-xa'],
+ ['na mas\u00e1\u017e zad','m\u00e1t-xa l\u01b0ng'],
+ ['pemza','\u0111\u00e1 b\u1ecdt'],
+ ['\u017e\u00ednka','kh\u0103n t\u1eafm'],
+ ['bambusov[\u00e1\u00e9\u00fd]','tre'],
+ ['kuchy\u0148sk[\u00e1\u00e9\u00fd]','nh\u00e0 b\u1ebfp'],
+ ['univerz\u00e1ln\u00ed','\u0111a n\u0103ng'],
+ ['s p\u0159\u00edrodn\u00edmi \u0161t\u011btinami','l\u00f4ng t\u1ef1 nhi\u00ean'],
+ ['zdarma','t\u1eb7ng k\u00e8m'],
+ ['na le\u0161t\u011bn\u00ed bot','\u0111\u00e1nh gi\u00e0y'],
+ ['na textil','cho v\u1ea3i'],
+ ['oboustrann[\u00e1\u00e9\u00fd]','hai m\u1eb7t'],
+ ['ru\u010dn\u00ed','c\u1ea7m tay'],
+ ['velk[\u00e1\u00e9\u00fd\u00e9]|velkych|velk\u00fdch','l\u1edbn'],
+ ['mal[\u00e1\u00e9\u00fd\u00e9]','nh\u1ecf'],
+ ['nerez','inox'],
+ ['ploch|na \u010di\u0161t\u011bn\u00ed velk\u00fdch ploch','lau b\u1ec1 m\u1eb7t r\u1ed9ng'],
+ ['perforovan[\u00e1\u00e9\u00fd]','\u0111\u1ee5c l\u1ed7'],
+ ['s v\u016fn\u00ed jahod','h\u01b0\u01a1ng d\u00e2u'],
+ ['s v\u016fn\u00ed jablka','h\u01b0\u01a1ng t\u00e1o'],
+ ['sada ut\u011brek','b\u1ed9 kh\u0103n lau'],
+ ['sada','b\u1ed9'],
+];
+var RULES=PHRASES.map(function(p){return [rx(p[0]),p[1]]});
+RULES.push([/(\d+)\s*ks(?!\p{L})/giu,'$1 c\u00e1i']);
+window.viTranslate=function(name){
+  var s=String(name||'');
+  RULES.forEach(function(r){s=s.replace(r[0],r[1])});
+  return s;
+};
+// diacritic-insensitive search key (CZ + VI)
+window.searchNorm=function(s){
+  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\u0111\u0110]/g,'d').toLowerCase();
+};
+})();

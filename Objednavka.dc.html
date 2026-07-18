@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#f2f1ee;font-family:Helvetica,Arial,sans-serif;color:#1c1c1c}
+a{color:#0b7a3e;text-decoration:none}a:hover{color:#085c2f;text-decoration:underline}
+input,textarea,button{font-family:inherit}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+@media print{.no-print{display:none}}
+</style>
+<script src="./config.js"></script>
+<script src="./translate-vi.js"></script>
+<script src="./order-xlsx.js"></script>
+<script src="./xlsx-import.js"></script>
+</helmet>
+
+<div ref="{{ headerRef }}" style="position:fixed;top:0;left:0;right:0;z-index:50;background:#ffffff;border-bottom:2px solid #0b7a3e;box-shadow:0 2px 10px rgba(0,0,0,.12)">
+  <div style="max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span style="font-size:15px;color:#555">Kč</span>
+      <span style="font-size:26px;font-weight:700;color:#0b7a3e">{{ totalVatDisplay }}</span>
+      <span style="font-size:13px;color:#555">s DPH</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:6px">
+      <span style="font-size:22px;font-weight:700">{{ pieceCount }}</span>
+      <span style="font-size:13px;color:#555">kusů</span>
+    </div>
+    <sc-if value="{{ belowMin }}" hint-placeholder-val="{{ false }}">
+      <span style="font-size:12px;color:#c0392b;font-weight:600">min. / ít nhất {{ minOrderDisplay }},- s DPH</span>
+    </sc-if>
+    <div style="flex:1"></div>
+    <button onClick="{{ reset }}" style="background:#c0392b;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;line-height:1.25" style-hover="background:#a53125">hủy đơn hàng ✕<br /><span style="font-weight:400;font-size:11px">zrušit objednávku</span></button>
+  </div>
+</div>
+
+<div style="max-width:1100px;margin:0 auto;padding:86px 16px 60px">
+  <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:8px 0 4px">
+    <h1 style="margin:0;font-size:24px;letter-spacing:-.01em">Objednávkový list – VOPH</h1>
+    <span style="font-size:13px;color:#777">{{ productCount }} položek · ceny s DPH 21 %</span>
+  </div>
+  <p style="margin:4px 0 18px;font-size:13px;color:#777">Zadejte množství u položek · Điền số lượng vào các mặt hàng, sau đó gửi đơn ở cuối trang.</p>
+
+  <div class="no-print" style="position:sticky;top:{{ stickyTop }};z-index:40;background:#f2f1ee;padding:10px 0 12px;margin-bottom:14px;box-shadow:0 8px 10px -10px rgba(0,0,0,.25)">
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <input type="text" value="{{ filter }}" onInput="{{ onFilter }}" placeholder="Hledat / Tìm kiếm… (název, kód, EAN)" style="flex:1;box-sizing:border-box;padding:12px 14px;font-size:15px;border:1px solid #ccc;border-radius:8px;background:#fff;outline:none" style-focus="border-color:#0b7a3e" />
+    <button onClick="{{ openScan }}" title="Skenovat čárový kód / Quét mã vạch" style="flex:none;width:47px;height:47px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0" style-hover="border-color:#0b7a3e">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+        <path d="M2.5 6V2.5H6 M21.5 6V2.5H18 M2.5 18v3.5H6 M21.5 18v3.5H18" stroke="#333" stroke-width="1.7" stroke-linecap="round"></path>
+        <path d="M6.5 7.5v9 M9.5 7.5v9 M12 7.5v9 M15.5 7.5v9 M18 7.5v9" stroke="#333" stroke-width="1.5"></path>
+        <path d="M13.8 7.5v9" stroke="#333" stroke-width=".8"></path>
+      </svg>
+    </button>
+  </div>
+  <sc-if value="{{ scanErr }}" hint-placeholder-val="{{ false }}">
+    <p style="margin:0 0 8px;font-size:12.5px;color:#c0392b;font-weight:600">{{ scanErr }}</p>
+  </sc-if>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <select value="{{ groupSel }}" onChange="{{ onGroupSel }}" style="padding:10px 12px;font-size:14px;border:1px solid #ccc;border-radius:8px;background:#fff;outline:none;max-width:100%;cursor:pointer">
+      <option value="">Všechny skupiny / Tất cả nhóm</option>
+      <sc-for list="{{ groupOptions }}" as="g" hint-placeholder-count="0">
+        <option value="{{ g }}">{{ g }}</option>
+      </sc-for>
+    </select>
+    <select value="{{ sort }}" onChange="{{ onSort }}" style="padding:10px 12px;font-size:14px;border:1px solid #ccc;border-radius:8px;background:#fff;outline:none;cursor:pointer">
+      <option value="">Řazení: výchozí / Sắp xếp: mặc định</option>
+      <option value="name">Podle názvu A–Z / Theo tên</option>
+      <option value="priceAsc">Cena od nejnižší / Giá thấp → cao</option>
+      <option value="priceDesc">Cena od nejvyšší / Giá cao → thấp</option>
+    </select>
+  </div>
+  </div>
+
+  <sc-for list="{{ groups }}" as="grp" hint-placeholder-count="1">
+    <div style="margin-bottom:30px">
+      <h2 style="margin:0 0 12px;font-size:17px;padding:8px 12px;background:#e4e2dc;border-radius:6px;display:flex;justify-content:space-between;align-items:baseline"><span>{{ grp.name }}</span><span style="font-size:12px;font-weight:400;color:#666">{{ grp.count }} položek</span></h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
+        <sc-for list="{{ grp.items }}" as="item" hint-placeholder-count="6">
+          <div style="background:{{ item.cardBg }};border:2px solid {{ item.cardBorder }};border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;position:relative">
+            <sc-if value="{{ item.hasTag }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;top:-10px;left:10px;background:{{ item.tagColor }};color:#fff;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:4px;letter-spacing:.04em;box-shadow:0 1px 3px rgba(0,0,0,.2)">{{ item.tagLabel }} · {{ item.tagVi }}</div>
+            </sc-if>
+            <sc-if value="{{ item.hasImg }}" hint-placeholder-val="{{ false }}">
+              <div style="height:130px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">
+                <img src="{{ item.img }}" alt="{{ item.name }}" loading="lazy" style="max-height:126px;max-width:100%;object-fit:contain" />
+              </div>
+            </sc-if>
+            <sc-if value="{{ item.noImg }}" hint-placeholder-val="{{ true }}">
+              <div style="height:130px;border-radius:6px;background:repeating-linear-gradient(45deg,#f4f3f0,#f4f3f0 8px,#ecebe7 8px,#ecebe7 16px);display:flex;align-items:center;justify-content:center">
+                <span style="font-family:monospace;font-size:11px;color:#999">foto produktu</span>
+              </div>
+            </sc-if>
+            <div style="min-height:66px">
+              <div style="font-size:12.5px;line-height:1.35;text-wrap:pretty">{{ item.name }}</div>
+              <div style="font-size:11.5px;line-height:1.35;color:#8a7f6a;font-style:italic;margin-top:3px;text-wrap:pretty">{{ item.nameVi }}</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-family:monospace;font-size:11px;color:#888">
+              <span>{{ item.code }}</span><span>{{ item.ean }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">
+              <span style="font-size:11.5px;color:#999">{{ item.priceNettoDisplay }} netto</span>
+              <span style="display:flex;align-items:baseline;gap:7px">
+                <sc-if value="{{ item.hasOldPrice }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:12px;color:#aaa;text-decoration:line-through">{{ item.oldVatDisplay }}</span>
+                </sc-if>
+                <span style="font-size:18px;font-weight:700;color:{{ item.priceColor }}">{{ item.priceVatDisplay }} <span style="font-size:11px;font-weight:600">Kč s DPH</span></span>
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span style="font-size:11px;color:{{ item.stockColor }}">● {{ item.stockLabel }}</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <button onClick="{{ item.dec }}" style="width:34px;height:34px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:17px;cursor:pointer;color:#555" style-hover="border-color:#0b7a3e;color:#0b7a3e">−</button>
+                <input type="number" min="0" value="{{ item.qtyStr }}" onInput="{{ item.onInput }}" placeholder="0" style="width:52px;height:34px;text-align:center;font-size:16px;font-weight:700;border:2px solid {{ item.inputBorder }};border-radius:6px;outline:none;box-sizing:border-box;color:#0b7a3e" />
+                <button onClick="{{ item.inc }}" style="width:34px;height:34px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:17px;cursor:pointer;color:#555" style-hover="border-color:#0b7a3e;color:#0b7a3e">+</button>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ grp.hasMore }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;justify-content:center;margin-top:14px">
+          <button onClick="{{ grp.showMore }}" style="padding:11px 22px;border:1px solid #999;border-radius:8px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;color:#444" style-hover="border-color:#0b7a3e;color:#0b7a3e">Zobrazit dalších {{ grp.moreCount }} · Xem thêm</button>
+        </div>
+      </sc-if>
+    </div>
+  </sc-for>
+
+  <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+    <p style="text-align:center;color:#999;font-size:14px;padding:30px 0">Nic nenalezeno / Không tìm thấy — „{{ filter }}“</p>
+  </sc-if>
+
+  <div class="no-print" style="background:#fff;border:1px solid #ddd;border-radius:12px;padding:22px;margin-top:36px">
+    <h2 style="margin:0;font-size:22px;color:#2c4a8a">Vaše kontaktní údaje:</h2>
+    <p style="margin:2px 0 14px;font-size:15px;color:#9aa3b5">Thông tin liên hệ — všechna pole povinná / bắt buộc</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:13px;font-weight:600;color:#444">IČO *</label>
+        <input type="text" inputMode="numeric" maxLength="8" value="{{ ico }}" onInput="{{ onIco }}" placeholder="8 číslic" style="padding:12px;font-size:15px;border:1px solid {{ icoBorder }};border-radius:8px;outline:none" style-focus="border-color:#2c4a8a" />
+        <span style="font-size:12px;color:{{ aresColor }};min-height:15px">{{ aresMsg }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:13px;font-weight:600;color:#444">Firma (dle ARES)</label>
+        <div style="padding:12px;font-size:15px;border:1px solid #e5e3de;border-radius:8px;background:#faf9f7;color:#555;min-height:19px">{{ aresName }}</div>
+      </div>
+      <div style="grid-column:1/-1;display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:13px;font-weight:600;color:#444">Dodací adresa *</label>
+        <textarea rows="2" value="{{ adresa }}" onInput="{{ onAdresa }}" placeholder="Tự động điền theo ARES sau khi nhập IČO — có thể sửa lại" style="padding:12px;font-size:15px;border:1px solid {{ adresaBorder }};border-radius:8px;resize:vertical;outline:none;box-sizing:border-box" style-focus="border-color:#2c4a8a"></textarea>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:13px;font-weight:600;color:#444">Telefon *</label>
+        <input type="tel" value="{{ telefon }}" onInput="{{ onTelefon }}" placeholder="+420…" style="padding:12px;font-size:15px;border:1px solid {{ telefonBorder }};border-radius:8px;outline:none" style-focus="border-color:#2c4a8a" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:13px;font-weight:600;color:#444">E-mail *</label>
+        <input type="email" value="{{ email }}" onInput="{{ onEmail }}" placeholder="firma@email.cz" style="padding:12px;font-size:15px;border:1px solid {{ emailBorder }};border-radius:8px;outline:none" style-focus="border-color:#2c4a8a" />
+      </div>
+    </div>
+    <sc-if value="{{ sendError }}" hint-placeholder-val="{{ false }}">
+      <p style="margin:10px 0 0;color:#c0392b;font-size:13px;font-weight:600">{{ sendError }}</p>
+    </sc-if>
+    <div style="display:flex;justify-content:center;margin-top:16px">
+      <button onClick="{{ send }}" style="min-width:280px;padding:15px 30px;font-size:19px;font-weight:600;border:1px solid #888;border-radius:8px;cursor:pointer;background:linear-gradient(#fdfdfd,#cfd8e2);color:#1c1c1c" style-hover="background:linear-gradient(#fff,#bcc9d8)">Odeslat – Gửi</button>
+    </div>
+    <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:16px;background:#eaf6ee;border:1px solid #0b7a3e;border-radius:8px;padding:14px;font-size:14px;line-height:1.5">
+        <strong style="color:#0b7a3e">{{ sentTitle }}</strong><br />
+        {{ sentMsg }}<br />
+        <span style="color:#777">{{ sentMsgVi }}</span>
+      </div>
+    </sc-if>
+  </div>
+
+  <div class="no-print" style="margin-top:28px;border:1px dashed #b8b5ae;border-radius:10px;padding:16px 18px;background:#faf9f7">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <strong style="font-size:13px;color:#666">Správa databáze (admin)</strong>
+      <label style="display:inline-flex;align-items:center;padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Import Excel (mẫu gốc)<input type="file" accept=".xlsx" onChange="{{ onImport }}" style="display:none" /></label>
+      <button onClick="{{ downloadCatalog }}" style="padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Stáhnout products.js</button>
+      <button onClick="{{ resetCatalog }}" style="padding:9px 14px;border:1px solid #ccc;border-radius:7px;background:#fff;font-size:13px;cursor:pointer;color:#888" style-hover="border-color:#c0392b;color:#c0392b">Obnovit původní</button>
+      <span style="font-size:13px;font-weight:600;color:#0b7a3e">{{ importMsg }}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <strong style="font-size:13px;color:#666">Feed / API</strong>
+      <input type="text" value="{{ feedUrl }}" onInput="{{ onFeedUrl }}" placeholder="https://… (JSON, CSV nebo XLSX feed)" style="flex:1;min-width:240px;padding:9px 12px;font-size:13px;border:1px solid #ccc;border-radius:7px;outline:none;font-family:monospace" style-focus="border-color:#0b7a3e" />
+      <button onClick="{{ loadFeed }}" style="padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Načíst feed</button>
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#666;cursor:pointer"><input type="checkbox" checked="{{ feedAuto }}" onChange="{{ onFeedAuto }}" />načítat při startu</label>
+    </div>
+    <p style="margin:10px 0 0;font-size:12px;color:#999;line-height:1.5">Import / feed platí okamžitě v tomto prohlížeči (uloženo lokálně). Pro trvalou změnu pro všechny zákazníky nahrajte stažený <span style="font-family:monospace">products.js</span> na GitHub / hosting, nebo zapněte feed s „načítat při startu". Feed musí povolovat CORS. Podporované formáty: JSON pole, CSV (hlavička jako v Excelu), XLSX.</p>
+  </div>
+
+  <div class="no-print" style="margin-top:16px;border:1px dashed #b8b5ae;border-radius:10px;padding:16px 18px;background:#faf9f7">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <strong style="font-size:13px;color:#666">Akce &amp; štítky (admin) · Khuyến mãi &amp; nhãn</strong>
+      <label style="display:inline-flex;align-items:center;padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Import akcí (.xlsx / .csv)<input type="file" accept=".xlsx,.csv" onChange="{{ onTagImport }}" style="display:none" /></label>
+      <select value="{{ tagFilter }}" onChange="{{ onTagFilter }}" style="padding:9px 12px;font-size:13px;border:1px solid #ccc;border-radius:7px;background:#fff;outline:none;cursor:pointer">
+        <option value="">Všechny štítky / Tất cả nhãn</option>
+        <option value="akce">Akce / Khuyến mãi</option>
+        <option value="sleva">Sleva / Giảm giá</option>
+        <option value="top">Bestseller / Bán chạy</option>
+        <option value="vyprodej">Výprodej / Xả kho</option>
+      </select>
+      <button onClick="{{ downloadTags }}" style="padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Stáhnout tags.json</button>
+      <button onClick="{{ clearTags }}" style="padding:9px 14px;border:1px solid #ccc;border-radius:7px;background:#fff;font-size:13px;cursor:pointer;color:#888" style-hover="border-color:#c0392b;color:#c0392b">Smazat vše</button>
+      <span style="font-size:13px;font-weight:600;color:#0b7a3e">{{ tagMsg }}</span>
+    </div>
+    <p style="margin:10px 0 0;font-size:12px;color:#999;line-height:1.5">Formát souboru: sloupec A = EAN, B = štítek (akce / sleva / top / vyprodej), C = akční cena s DPH (nepovinné — nechte prázdné pro pouhý štítek). Změny platí okamžitě v tomto prohlížeči; pro všechny zákazníky stáhněte <span style="font-family:monospace">tags.json</span> a nahrajte na GitHub.</p>
+    <sc-for list="{{ tagRows }}" as="tr" hint-placeholder-count="0">
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #eee;flex-wrap:wrap">
+        <span style="font-family:monospace;font-size:11px;color:#888;width:104px">{{ tr.ean }}</span>
+        <span style="flex:1;min-width:190px;font-size:12.5px;color:{{ tr.nameColor }}">{{ tr.name }}</span>
+        <select value="{{ tr.tag }}" onChange="{{ tr.onTag }}" style="padding:7px 9px;font-size:12px;border:1px solid #ccc;border-radius:6px;background:#fff;outline:none;cursor:pointer">
+          <option value="akce">Akce</option>
+          <option value="sleva">Sleva</option>
+          <option value="top">Bestseller</option>
+          <option value="vyprodej">Výprodej</option>
+        </select>
+        <input type="number" min="0" step="0.01" value="{{ tr.priceStr }}" onInput="{{ tr.onPrice }}" placeholder="cena s DPH" style="width:96px;padding:7px 9px;font-size:12px;border:1px solid #ccc;border-radius:6px;outline:none;box-sizing:border-box" style-focus="border-color:#0b7a3e" />
+        <button onClick="{{ tr.toggle }}" style="padding:7px 11px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:12px;font-weight:600;cursor:pointer;min-width:78px;color:{{ tr.onColor }}" style-hover="border-color:#0b7a3e">{{ tr.onLabel }}</button>
+        <button onClick="{{ tr.del }}" style="width:30px;height:30px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:13px;cursor:pointer;color:#888" style-hover="border-color:#c0392b;color:#c0392b">✕</button>
+      </div>
+    </sc-for>
+    <sc-if value="{{ noTags }}" hint-placeholder-val="{{ true }}">
+      <p style="margin:12px 0 0;font-size:12px;color:#aaa;font-style:italic">Zatím žádné štítky — importujte soubor s akcemi. / Chưa có nhãn nào — hãy import file khuyến mãi.</p>
+    </sc-if>
+  </div>
+</div>
+
+<sc-if value="{{ scanOpen }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;z-index:100;background:#000">
+    <video ref="{{ videoRef }}" autoPlay="{{ true }}" playsInline="{{ true }}" muted="{{ true }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
+    <div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:min(78vw,420px);height:150px;border:3px solid #2ee06b;border-radius:12px;box-shadow:0 0 0 200vmax rgba(0,0,0,.55)"></div>
+    <div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:min(72vw,390px);height:2px;background:rgba(46,224,107,.65)"></div>
+    <p style="position:absolute;left:16px;right:16px;top:calc(44% + 92px);text-align:center;color:#fff;font-size:14.5px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.8);margin:0">Namiřte čárový kód do zeleného rámečku<br /><span style="font-weight:400;opacity:.85">Đưa mã vạch vào trong khung xanh — chỉ đọc mã trong khung (không đọc QR)</span></p>
+    <button onClick="{{ closeScan }}" style="position:absolute;top:16px;right:16px;padding:10px 18px;border:1px solid rgba(255,255,255,.6);border-radius:8px;background:rgba(0,0,0,.45);color:#fff;font-size:14px;font-weight:600;cursor:pointer">✕ Zavřít / Đóng</button>
+  </div>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;orderEmail&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;info@voph.cz&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;minOrder&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:15000,&quot;min&quot;:0,&quot;max&quot;:50000,&quot;unit&quot;:&quot;Kč&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;vatPercent&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:21,&quot;min&quot;:0,&quot;max&quot;:30,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;}}">
+class Component extends DCLogic {
+  state = { qty: {}, filter: '', ico: '', adresa: '', telefon: '', email: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: '', groupSel: '', scanOpen: false, scanErr: '', headerH: 72 };
+  fmt(n) { return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  componentDidMount() {
+    fetch('./products.json').then(r => r.ok ? r.json() : null).then(d => { if (Array.isArray(d)) this.setState({ baseCatalog: d }); }).catch(() => {});
+    fetch('./tags.json').then(r => r.ok ? r.json() : null).then(d => { if (d && typeof d === 'object' && !Array.isArray(d)) this.setState({ baseTags: d }); }).catch(() => {});
+    try {
+      const s = localStorage.getItem('voph_catalog_v1'); if (s) this.setState({ catalog: JSON.parse(s) });
+      const tl = localStorage.getItem('voph_tags_v1'); if (tl) this.setState({ tags: JSON.parse(tl) });
+      const cfg = window.CONFIG || {};
+      const u = localStorage.getItem('voph_feed_url') || cfg.feedUrl || '';
+      const autoStored = localStorage.getItem('voph_feed_auto');
+      const auto = autoStored === null ? !!cfg.feedAutoDefault : autoStored === '1';
+      this.setState({ feedUrl: u, feedAuto: auto });
+      if (u && auto) this.loadFeed(u, true);
+    } catch (e) {}
+  }
+  normalizeProducts(arr) {
+    const pick = (o, keys) => { for (const k of keys) { for (const ok of Object.keys(o)) { if (ok.toLowerCase().trim() === k) return o[ok]; } } return undefined; };
+    const out = arr.map(o => ({
+      code: String(pick(o, ['code', 'zkratka', 'zkratka 1', 'kod', 'kód']) ?? ''),
+      ean: String(pick(o, ['ean', 'implicitní ean', 'implicitni ean', 'barcode']) ?? '').replace(/\.0+$/, ''),
+      name: String(pick(o, ['name', 'jaz.název', 'jaz.nazev', 'nazev', 'název', 'title']) ?? ''),
+      group: String(pick(o, ['group', 'skupina pro e-shop', 'skupina', 'kategorie', 'category']) ?? 'Ostatní'),
+      price: Math.round(parseFloat(String(pick(o, ['price', 'prodejní cena netto', 'prodejni cena netto', 'cena']) ?? '0').replace(',', '.')) * 100) / 100,
+      stock: parseInt(pick(o, ['stock', 'dispozice [10]', 'dispozice', 'sklad']) ?? '0', 10) || 0,
+      pack: parseInt(pick(o, ['pack', 'počet ks v bal', 'pocet ks v bal']) ?? '1', 10) || 1,
+      dph: String(pick(o, ['dph', 'vat']) ?? 'ZS'),
+    })).filter(p => p.ean && p.name);
+    if (!out.length) throw new Error('Feed neobsahuje žádné platné položky');
+    return this.addVi(out);
+  }
+  parseCsv(text) {
+    const sep = (text.split('\n')[0].match(/;/g) || []).length >= (text.split('\n')[0].match(/,/g) || []).length ? ';' : ',';
+    const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim());
+    const split = l => { const out = []; let cur = '', q = false; for (const ch of l) { if (ch === '"') q = !q; else if (ch === sep && !q) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; };
+    const head = split(lines[0]);
+    return lines.slice(1).map(l => { const c = split(l), o = {}; head.forEach((h, i) => o[h] = c[i]); return o; });
+  }
+  async fetchFeed(url, asBuffer) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return asBuffer ? await r.arrayBuffer() : await r.text();
+    } catch (e) {
+      const p = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+      const r2 = await fetch(p);
+      if (!r2.ok) throw new Error('HTTP ' + r2.status + ' (proxy)');
+      return asBuffer ? await r2.arrayBuffer() : await r2.text();
+    }
+  }
+  parseShopXml(text) {
+    const tag = (s, n) => { const m = s.match(new RegExp('<' + n + '>([\\s\\S]*?)</' + n + '>')); return m ? m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim() : ''; };
+    const items = text.match(/<SHOPITEM>[\s\S]*?<\/SHOPITEM>/g) || [];
+    return items.map(s => {
+      const cat = tag(s, 'CATEGORYTEXT');
+      const parts = cat.split('|').map(x => x.trim()).filter(Boolean);
+      const vat = parseFloat(tag(s, 'VAT')) || 21;
+      const pv = parseFloat(tag(s, 'PRICE_VAT')) || 0;
+      return {
+        code: tag(s, 'ITEM_ID'), ean: tag(s, 'EAN'),
+        name: tag(s, 'PRODUCTNAME') || tag(s, 'PRODUCT'),
+        group: parts[parts.length - 1] || 'Ostatní',
+        cat: parts.join(' | '),
+        price: Math.round(pv / (1 + vat / 100) * 100) / 100,
+        stock: 0, pack: 1, dph: 'ZS',
+        img: (s.match(/<IMGURL>([\s\S]*?)<\/IMGURL>/) || [])[1] || '',
+        desc: tag(s, 'DESCRIPTION'), brand: tag(s, 'MANUFACTURER'),
+      };
+    }).filter(p => p.ean && p.name);
+  }
+  async loadFeed(urlArg, silent) {
+    const url = (typeof urlArg === 'string' ? urlArg : this.state.feedUrl).trim();
+    if (!url) { this.setState({ importMsg: 'Zadejte URL feedu' }); return; }
+    this.setState({ importMsg: 'Načítám feed…' });
+    try {
+      let prods;
+      if (/\.xlsx(\?|$)/i.test(url)) {
+        prods = this.addVi(await window.parseCatalogXlsx(await this.fetchFeed(url, true)));
+      } else {
+        const text = await this.fetchFeed(url);
+        if (text.includes('<SHOPITEM>')) {
+          prods = this.addVi(this.parseShopXml(text));
+          if (!prods.length) throw new Error('Feed neobsahuje žádné položky');
+          if (/CPHArticleFeed/i.test(url)) {
+            try {
+              const at = await this.fetchFeed(url.replace(/CPHArticleFeed/i, 'CPHArticleAvailabilityFeed'));
+              const stock = {}; let m; const rx = /<item id="([^"]+)">\s*<stock_quantity>(\d+)/g;
+              while ((m = rx.exec(at))) stock[m[1]] = +m[2];
+              prods.forEach(p => { p.stock = stock[p.code] || 0; });
+            } catch (e) {}
+          }
+        } else {
+          let data = null;
+          try { data = JSON.parse(text); } catch (e) {}
+          if (data) {
+            const arr = Array.isArray(data) ? data : (data.items || data.products || data.data);
+            if (!Array.isArray(arr)) throw new Error('JSON neobsahuje pole položek');
+            prods = this.normalizeProducts(arr);
+          } else {
+            prods = this.normalizeProducts(this.parseCsv(text));
+          }
+        }
+      }
+      try { localStorage.setItem('voph_catalog_v1', JSON.stringify(prods)); localStorage.setItem('voph_feed_url', url); } catch (e) {}
+      this.setState({ catalog: prods, importMsg: 'Feed načten: ' + prods.length + ' položek ✓' });
+    } catch (err) {
+      this.setState({ importMsg: 'Chyba feedu: ' + err.message + ' (zkontrolujte URL a CORS)' });
+    }
+  }
+  catalogAll() { return this.state.catalog || this.state.baseCatalog || window.PRODUCTS || []; }
+  async openScan() {
+    if (!('BarcodeDetector' in window)) { this.setState({ scanErr: 'Prohlížeč nepodporuje skenování — použijte Chrome/Edge na telefonu. / Trình duyệt không hỗ trợ quét mã — hãy dùng Chrome trên điện thoại.' }); return; }
+    try {
+      const supported = await window.BarcodeDetector.getSupportedFormats();
+      const want = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'codabar'].filter(f => supported.includes(f));
+      if (!want.length) throw Object.assign(new Error(), { name: 'NoFormats' });
+      this._detector = new window.BarcodeDetector({ formats: want });
+      this._stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
+      this.setState({ scanOpen: true, scanErr: '' });
+      if (this._video) { this._video.srcObject = this._stream; this._video.play().catch(() => {}); }
+      this._scanTimer = setInterval(() => this.scanTick(), 220);
+    } catch (e) {
+      this.stopScan();
+      this.setState({ scanErr: e.name === 'NotAllowedError' ? 'Přístup ke kameře byl zamítnut. / Bạn chưa cho phép dùng camera — hãy cấp quyền camera cho trang.' : 'Kameru se nepodařilo spustit. / Không mở được camera.' });
+    }
+  }
+  scanTick() {
+    const v = this._video;
+    if (!v || !this._detector || !v.videoWidth) return;
+    // chỉ đọc vùng trong ô focus: cắt đúng khung xanh từ video (object-fit:cover) rồi mới detect
+    const W = window.innerWidth, H = window.innerHeight;
+    const bw = Math.min(W * .78, 420), bh = 150, cx = W / 2, cy = H * .44;
+    const scale = Math.max(W / v.videoWidth, H / v.videoHeight);
+    const sw = bw / scale, sh = bh / scale;
+    const x0 = v.videoWidth / 2 + (cx - bw / 2 - W / 2) / scale;
+    const y0 = v.videoHeight / 2 + (cy - bh / 2 - H / 2) / scale;
+    const c = this._canvas || (this._canvas = document.createElement('canvas'));
+    c.width = Math.max(1, Math.round(sw)); c.height = Math.max(1, Math.round(sh));
+    c.getContext('2d').drawImage(v, x0, y0, sw, sh, 0, 0, c.width, c.height);
+    this._detector.detect(c).then(codes => {
+      const hit = (codes || []).find(b => b.format !== 'qr_code' && b.rawValue);
+      if (hit && this.state.scanOpen) { this.setState({ filter: hit.rawValue }); this.stopScan(); }
+    }).catch(() => {});
+  }
+  stopScan() {
+    if (this._scanTimer) { clearInterval(this._scanTimer); this._scanTimer = null; }
+    if (this._stream) { this._stream.getTracks().forEach(t => t.stop()); this._stream = null; }
+    this._detector = null;
+    if (this.state.scanOpen) this.setState({ scanOpen: false });
+  }
+  componentWillUnmount() { this.stopScan(); if (this._headerRO) this._headerRO.disconnect(); }
+  watchHeader(el) {
+    if (this._headerRO) { this._headerRO.disconnect(); this._headerRO = null; }
+    this._header = el;
+    if (!el) return;
+    const upd = () => { const h = Math.ceil(el.getBoundingClientRect().height); if (h && h !== this.state.headerH) this.setState({ headerH: h }); };
+    if (window.ResizeObserver) { this._headerRO = new ResizeObserver(upd); this._headerRO.observe(el); }
+    upd();
+  }
+  tagDefs() { return { akce: ['AKCE', 'Khuyến mãi', '#e67e22'], sleva: ['SLEVA', 'Giảm giá', '#c0392b'], top: ['BESTSELLER', 'Bán chạy nhất', '#a4780a'], vyprodej: ['VÝPRODEJ', 'Xả kho', '#8e44ad'] }; }
+  effTags() { const out = { ...this.state.baseTags }; for (const k of Object.keys(this.state.tags)) { const v = this.state.tags[k]; if (v && v.del) delete out[k]; else out[k] = v; } return out; }
+  setTag(ean, patch) {
+    const base = this.effTags()[ean] || this.state.tags[ean] || { tag: 'akce', price: 0, on: true };
+    const tags = { ...this.state.tags, [ean]: { ...base, ...patch } };
+    try { localStorage.setItem('voph_tags_v1', JSON.stringify(tags)); } catch (e) {}
+    this.setState({ tags });
+  }
+  decorated(VAT) {
+    const tags = this.effTags(), defs = this.tagDefs();
+    return this.catalogAll().map(p => {
+      const t = tags[p.ean];
+      if (!t || t.on === false || !defs[t.tag]) return p;
+      const d = Object.assign({}, p, { _tag: t.tag, _sk: this.searchKey(p) });
+      if (+t.price > 0) { d._origVat = p.price * VAT; d.price = Math.round(+t.price / VAT * 100) / 100; }
+      return d;
+    });
+  }
+  async importTags(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      let rows;
+      if (/\.xlsx$/i.test(file.name)) rows = await window.parseXlsxRows(await file.arrayBuffer());
+      else rows = String(await file.text()).replace(/\r/g, '').split('\n').map(l => l.split(/[;,\t]/).map(c => c.replace(/^"|"$/g, '')));
+      const norm = v => { v = String(v || '').toLowerCase(); if (v.includes('slev') || v.includes('giảm')) return 'sleva'; if (v.includes('best') || v.includes('top') || v.includes('chạy')) return 'top'; if (v.includes('prod') || v.includes('xả')) return 'vyprodej'; return 'akce'; };
+      let n = 0; const tags = { ...this.state.tags };
+      for (const r of rows) {
+        const ean = String(r[0] || '').replace(/\.0+$/, '').trim();
+        if (!/^\d{8,14}$/.test(ean)) continue;
+        tags[ean] = { tag: norm(r[1]), price: Math.round((parseFloat(String(r[2] || '').replace(',', '.')) || 0) * 100) / 100, on: true }; n++;
+      }
+      if (!n) throw new Error('žádné platné řádky (sloupec A musí být EAN)');
+      try { localStorage.setItem('voph_tags_v1', JSON.stringify(tags)); } catch (err) {}
+      this.setState({ tags, tagMsg: 'Importováno ' + n + ' štítků ✓' });
+    } catch (err) {
+      this.setState({ tagMsg: 'Chyba importu: ' + err.message });
+    }
+    e.target.value = '';
+  }
+  addVi(prods) { prods.forEach(p => { if (!p.nameVi && window.viTranslate) p.nameVi = window.viTranslate(p.name); }); return prods; }
+  searchKey(p) { return p._sk || (p._sk = window.searchNorm(p.name + ' ' + (p.nameVi || '') + ' ' + p.code + ' ' + p.ean + ' ' + (p.group || '') + ' ' + (p.cat || ''))); }
+  fetchAres(ico) {
+    this.setState({ aresStatus: 'loading', aresName: '' });
+    fetch('https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/' + ico)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(d => {
+        if (this.state.ico !== ico) return;
+        const adr = (d.sidlo && d.sidlo.textovaAdresa) || '';
+        this.setState({ aresStatus: 'ok', aresName: d.obchodniJmeno || '', adresa: adr || this.state.adresa });
+      })
+      .catch(() => { if (this.state.ico === ico) this.setState({ aresStatus: 'err' }); });
+  }
+  setQty(ean, v) {
+    const q = Math.max(0, Math.min(99999, Math.floor(v) || 0));
+    this.setState(s => ({ qty: { ...s.qty, [ean]: q }, sent: false }));
+  }
+  renderVals() {
+    const VAT = 1 + ((this.props.vatPercent ?? 21) / 100);
+    const minOrder = this.props.minOrder ?? 5000;
+    const all = this.decorated(VAT);
+    const f = window.searchNorm ? window.searchNorm(this.state.filter.trim()) : this.state.filter.trim().toLowerCase();
+    const filtered0 = f ? all.filter(p => this.searchKey(p).includes(f)) : all;
+    const filtered = this.state.groupSel ? filtered0.filter(p => p.group === this.state.groupSel) : filtered0;
+    const byGroup = {};
+    filtered.forEach(p => { (byGroup[p.group] = byGroup[p.group] || []).push(p); });
+    const sortFn = { name: (a, b) => a.name.localeCompare(b.name, 'cs'), priceAsc: (a, b) => a.price - b.price, priceDesc: (a, b) => b.price - a.price }[this.state.sort];
+    if (sortFn) Object.values(byGroup).forEach(arr => arr.sort(sortFn));
+    let totalVat = 0, pieceCount = 0;
+    all.forEach(p => { const q = this.state.qty[p.ean] || 0; totalVat += q * p.price * VAT; pieceCount += q; });
+    const groups = Object.keys(byGroup).map(name => {
+      const limit = f ? 10000 : (this.state.shown[name] || 60);
+      const total = byGroup[name].length;
+      return {
+      name, count: total,
+      hasMore: total > limit,
+      moreCount: Math.min(120, total - limit),
+      showMore: () => this.setState(s => ({ shown: { ...s.shown, [name]: limit + 120 } })),
+      items: byGroup[name].slice(0, limit).map(p => {
+        const q = this.state.qty[p.ean] || 0;
+        return {
+          name: p.name, nameVi: p.nameVi || '', code: p.code, ean: p.ean,
+          img: p.img || '', hasImg: !!p.img, noImg: !p.img,
+          priceNettoDisplay: this.fmt(p.price), priceVatDisplay: this.fmt(p.price * VAT),
+          qtyStr: q ? String(q) : '',
+          cardBg: q ? '#f2faf4' : '#ffffff',
+          cardBorder: q ? '#0b7a3e' : '#e3e1db',
+          inputBorder: q ? '#0b7a3e' : '#d48db4',
+          stockColor: p.stock > 0 ? '#0b7a3e' : '#c0392b',
+          stockLabel: p.stock > 0 ? 'skladem' : 'na dotaz',
+          inc: () => this.setQty(p.ean, q + 1),
+          dec: () => this.setQty(p.ean, q - 1),
+          onInput: (e) => this.setQty(p.ean, parseInt(e.target.value, 10)),
+          hasTag: !!p._tag,
+          tagLabel: p._tag ? this.tagDefs()[p._tag][0] : '', tagVi: p._tag ? this.tagDefs()[p._tag][1] : '', tagColor: p._tag ? this.tagDefs()[p._tag][2] : '#000',
+          hasOldPrice: !!p._origVat, oldVatDisplay: p._origVat ? this.fmt(p._origVat) : '',
+          priceColor: p._origVat ? '#c0392b' : '#0b7a3e',
+        };
+      })
+    };});
+    const groupOptions = [...new Set(all.map(p => p.group))].sort((a, b) => a.localeCompare(b, 'cs'));
+    const byEan = {}; all.forEach(p => { byEan[p.ean] = p; });
+    const effT = this.effTags();
+    const tagRows = Object.entries(effT)
+      .filter(([e2, t]) => !this.state.tagFilter || t.tag === this.state.tagFilter)
+      .map(([ean, t]) => ({
+        ean, name: byEan[ean] ? byEan[ean].name : '— není v katalogu / không có trong danh mục —',
+        nameColor: byEan[ean] ? '#333' : '#c0392b',
+        tag: t.tag, priceStr: t.price ? String(t.price) : '',
+        onTag: (e2) => this.setTag(ean, { tag: e2.target.value }),
+        onPrice: (e2) => this.setTag(ean, { price: parseFloat(e2.target.value) || 0 }),
+        toggle: () => this.setTag(ean, { on: t.on === false }),
+        onLabel: t.on === false ? 'vypnuto ✕' : 'zapnuto ✓', onColor: t.on === false ? '#c0392b' : '#0b7a3e',
+        del: () => this.setTag(ean, { del: true }),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+    return {
+      groups, productCount: all.length, noResults: filtered.length === 0, filter: this.state.filter,
+      totalVatDisplay: this.fmt(totalVat),
+      pieceCount,
+      belowMin: totalVat > 0 && totalVat < minOrder,
+      minOrderDisplay: minOrder.toLocaleString('cs-CZ'),
+      sent: this.state.sent, sentFile: this.state.sentFile, sendError: this.state.sendError,
+      sentTitle: this.state.sentTitle, sentMsg: this.state.sentMsg, sentMsgVi: this.state.sentMsgVi,
+      ico: this.state.ico, adresa: this.state.adresa, telefon: this.state.telefon, email: this.state.email,
+      aresName: this.state.aresName,
+      aresMsg: { loading: 'Hledám v ARES…', ok: '✓ Nalezeno v ARES — adresa doplněna', err: 'IČO nenalezeno v ARES — vyplňte adresu ručně' }[this.state.aresStatus] || '',
+      aresColor: this.state.aresStatus === 'err' ? '#c0392b' : this.state.aresStatus === 'ok' ? '#0b7a3e' : '#888',
+      icoBorder: this.state.tried && !/^\d{8}$/.test(this.state.ico) ? '#c0392b' : '#ccc',
+      adresaBorder: this.state.tried && !this.state.adresa.trim() ? '#c0392b' : '#ccc',
+      telefonBorder: this.state.tried && this.state.telefon.trim().length < 9 ? '#c0392b' : '#ccc',
+      emailBorder: this.state.tried && !/^\S+@\S+\.\S+$/.test(this.state.email.trim()) ? '#c0392b' : '#ccc',
+      importMsg: this.state.importMsg,
+      feedUrl: this.state.feedUrl || '', feedAuto: !!this.state.feedAuto,
+      onFeedUrl: (e) => this.setState({ feedUrl: e.target.value }),
+      onFeedAuto: (e) => { const v = e.target.checked; this.setState({ feedAuto: v }); try { localStorage.setItem('voph_feed_auto', v ? '1' : '0'); } catch (err) {} },
+      loadFeed: () => this.loadFeed(),
+      onFilter: (e) => this.setState({ filter: e.target.value }),
+      sort: this.state.sort, onSort: (e) => this.setState({ sort: e.target.value }),
+      scanOpen: this.state.scanOpen, scanErr: this.state.scanErr,
+      stickyTop: this.state.headerH + 'px',
+      headerRef: (el) => this.watchHeader(el),
+      openScan: () => this.openScan(),
+      closeScan: () => this.stopScan(),
+      videoRef: (el) => { this._video = el; if (el && this._stream) { el.srcObject = this._stream; el.play().catch(() => {}); } },
+      groupSel: this.state.groupSel, onGroupSel: (e) => this.setState({ groupSel: e.target.value }),
+      groupOptions,
+      tagFilter: this.state.tagFilter, onTagFilter: (e) => this.setState({ tagFilter: e.target.value }),
+      tagRows, noTags: tagRows.length === 0, tagMsg: this.state.tagMsg,
+      onTagImport: (e) => this.importTags(e),
+      downloadTags: () => {
+        const blob = new Blob([JSON.stringify(this.effTags(), null, 1)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'tags.json'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      },
+      clearTags: () => {
+        const t = {}; Object.keys(this.state.baseTags).forEach(k => { t[k] = { del: true }; });
+        try { localStorage.setItem('voph_tags_v1', JSON.stringify(t)); } catch (e) {}
+        this.setState({ tags: t, tagMsg: 'Všechny štítky smazány' });
+      },
+      onIco: (e) => {
+        const v = e.target.value.replace(/\D/g, '').slice(0, 8);
+        this.setState({ ico: v });
+        if (/^\d{8}$/.test(v)) this.fetchAres(v);
+      },
+      onAdresa: (e) => this.setState({ adresa: e.target.value }),
+      onTelefon: (e) => this.setState({ telefon: e.target.value }),
+      onEmail: (e) => this.setState({ email: e.target.value }),
+      onImport: (e) => this.importXlsx(e),
+      downloadCatalog: () => {
+        const blob = new Blob(['window.PRODUCTS=' + JSON.stringify(this.catalogAll()) + ';'], { type: 'text/javascript' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'products.js'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      },
+      resetCatalog: () => { try { localStorage.removeItem('voph_catalog_v1'); } catch (e) {} this.setState({ catalog: null, importMsg: 'Obnoveno původní (' + ((window.PRODUCTS || []).length) + ' položek)' }); },
+      reset: () => this.setState({ qty: {}, sent: false, sendError: '', tried: false }),
+      send: () => this.send(minOrder, VAT),
+    };
+  }
+  send(minOrder, VAT) {
+    const all = this.decorated(VAT);
+    const rows = all.filter(p => (this.state.qty[p.ean] || 0) > 0)
+      .map(p => ({ ean: Number(p.ean), qty: this.state.qty[p.ean], price: p.price }));
+    if (!rows.length) { this.setState({ sendError: 'Objednávka je prázdná — zadejte množství. / Đơn hàng trống.', tried: true }); return; }
+    const s = this.state;
+    const invalid = !/^\d{8}$/.test(s.ico) || !s.adresa.trim() || s.telefon.trim().length < 9 || !/^\S+@\S+\.\S+$/.test(s.email.trim());
+    if (invalid) { this.setState({ sendError: 'Vyplňte prosím všechna povinná pole (IČO, adresa, telefon, e-mail). / Hãy điền đủ các ô bắt buộc.', tried: true }); return; }
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const fname = 'objednavka_' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes()) + '.xlsx';
+    const blob = window.buildOrderXlsx(rows);
+    const totalVat = rows.reduce((s, r) => s + r.qty * r.price * VAT, 0);
+    const cfg = window.CONFIG || {};
+    const ascUrl = (this.props.appsScriptUrl ?? cfg.appsScriptUrl) || '';
+    const orderEmail = this.props.orderEmail ?? cfg.orderEmail ?? 'info@voph.cz';
+    if (ascUrl) {
+      const fr = new FileReader();
+      fr.onload = () => {
+        const detail = all.filter(p => (this.state.qty[p.ean] || 0) > 0).map(p => ({ ean: p.ean, code: p.code, name: p.name, nameVi: p.nameVi || '', qty: this.state.qty[p.ean], price: p.price, priceVat: Math.round(p.price * VAT * 100) / 100, img: p.img || '' }));
+        const payload = { ico: this.state.ico, firma: this.state.aresName, adresa: this.state.adresa, telefon: this.state.telefon, email: this.state.email, items: detail, totalVat: Math.round(totalVat * 100) / 100, pieces: rows.reduce((s, r) => s + r.qty, 0), fname: fname, xlsxBase64: String(fr.result).split(',')[1], orderEmail: orderEmail, date: d.toLocaleString('cs-CZ') };
+        fetch(ascUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) })
+          .then(() => this.setState({ sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, sentTitle: 'Objednávka odeslána ✓', sentMsg: 'Potvrzení objednávky (PDF) vám bylo zasláno na ' + this.state.email + '. Kopie s objednávkou odešla na ' + orderEmail + '.', sentMsgVi: 'Xác nhận đơn hàng (PDF) đã được gửi tới email của bạn.' }))
+          .catch(() => this.setState({ sendError: 'Odeslání se nezdařilo — zkuste to prosím znovu. / Gửi thất bại, hãy thử lại.' }));
+      };
+      fr.readAsDataURL(blob);
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const body = 'Objednávka – ' + rows.length + ' položek, ' + rows.reduce((s, r) => s + r.qty, 0) + ' ks, ' + this.fmt(totalVat) + ' Kč s DPH.\n\nIČO: ' + this.state.ico + (this.state.aresName ? ' (' + this.state.aresName + ')' : '') + '\nDodací adresa: ' + this.state.adresa + '\nTelefon: ' + this.state.telefon + '\nE-mail: ' + this.state.email + '\n\nPřikládám soubor ' + fname + ' (prosím přiložte stažený soubor).';
+    window.location.href = 'mailto:' + orderEmail + '?subject=' + encodeURIComponent('Objednávka ' + d.toLocaleDateString('cs-CZ')) + '&body=' + encodeURIComponent(body);
+    this.setState({ sent: true, sentFile: fname, sendError: '', tried: false, sentTitle: 'Objednávka připravena ✓', sentMsg: 'Soubor ' + fname + ' byl stažen a otevřel se e-mail na ' + orderEmail + ' — přiložte prosím stažený soubor.', sentMsgVi: 'File Excel đã tải xuống — hãy đính kèm vào email vừa mở và gửi đi.' });
+  }
+  async importXlsx(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const prods = this.addVi(await window.parseCatalogXlsx(await file.arrayBuffer()));
+      try { localStorage.setItem('voph_catalog_v1', JSON.stringify(prods)); } catch (err) {}
+      this.setState({ catalog: prods, importMsg: 'Importováno ' + prods.length + ' položek ✓' });
+    } catch (err) {
+      this.setState({ importMsg: 'Chyba importu: ' + err.message });
+    }
+    e.target.value = '';
+  }
+}
+</script>
+</body>
+</html>
