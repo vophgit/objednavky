@@ -1,7 +1,7 @@
 // Cấu hình web — sửa các giá trị này rồi nhấn Commit trên GitHub.
 window.CONFIG = {
   // URL của Google Apps Script (gửi email tự động + PDF potvrzení). Xem NAVOD.md bước 5.
-  appsScriptUrl: "",
+  appsScriptUrl: "https://script.google.com/macros/s/AKfycbwyndlwBfyCmC9_ToWNu187lSl6xNnTLfOVUt2CDDyGYeQ3zd0ml40moJECIdCr2Up9Og/exec",
   // Feed sản phẩm (XML Zboží.cz / JSON / CSV / XLSX). Feed tồn kho CPHArticleAvailabilityFeed tự ghép theo ITEM_ID.
   feedUrl: "https://voph.cz/pictures/feeds/CPHArticleFeed.xml",
   // Tự tải feed khi mở trang (khách luôn thấy dữ liệu mới)
