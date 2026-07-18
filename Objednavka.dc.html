@@ -89,7 +89,7 @@ input[type=number]{-moz-appearance:textfield}
             </sc-if>
             <sc-if value="{{ item.hasImg }}" hint-placeholder-val="{{ false }}">
               <div style="height:130px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">
-                <img src="{{ item.img }}" alt="{{ item.name }}" loading="lazy" style="max-height:126px;max-width:100%;object-fit:contain" />
+                <img src="{{ item.img }}" alt="{{ item.name }}" loading="lazy" decoding="async" style="max-height:126px;max-width:100%;object-fit:contain" />
               </div>
             </sc-if>
             <sc-if value="{{ item.noImg }}" hint-placeholder-val="{{ true }}">
@@ -354,6 +354,10 @@ class Component extends DCLogic {
     }
   }
   catalogAll() { return this.state.catalog || this.state.baseCatalog || window.PRODUCTS || []; }
+  thumb(url) {
+    if (!url || (window.CONFIG || {}).imgThumbs === false) return url || '';
+    return 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=260&h=260&fit=inside&output=webp&q=72';
+  }
   async openScan() {
     if (!('BarcodeDetector' in window)) { this.setState({ scanErr: 'Prohlížeč nepodporuje skenování — použijte Chrome/Edge na telefonu. / Trình duyệt không hỗ trợ quét mã — hãy dùng Chrome trên điện thoại.' }); return; }
     try {
@@ -485,7 +489,7 @@ class Component extends DCLogic {
         const q = this.state.qty[p.ean] || 0;
         return {
           name: p.name, nameVi: p.nameVi || '', code: p.code, ean: p.ean,
-          img: p.img || '', hasImg: !!p.img, noImg: !p.img,
+          img: this.thumb(p.img), hasImg: !!p.img, noImg: !p.img,
           priceNettoDisplay: this.fmt(p.price), priceVatDisplay: this.fmt(p.price * VAT),
           qtyStr: q ? String(q) : '',
           cardBg: q ? '#f2faf4' : '#ffffff',
