@@ -18,6 +18,7 @@ input[type=number]{-moz-appearance:textfield}
 </style>
 <script src="./config.js"></script>
 <script src="./translate-vi.js"></script>
+<script src="./group-map.js"></script>
 <script src="./order-xlsx.js"></script>
 <script src="./xlsx-import.js"></script>
 </helmet>
@@ -408,6 +409,8 @@ class Component extends DCLogic {
   decorated(VAT) {
     const tags = this.effTags(), defs = this.tagDefs(), prices = this.effPrices();
     return this.catalogAll().map(p => {
+      if (!p._g7 && window.mapGroup7) p._g7 = window.mapGroup7(p);
+      if (p._g7 && p.group !== p._g7) p = Object.assign({}, p, { group: p._g7 });
       if (prices[p.ean] != null) { p = Object.assign({}, p, { price: prices[p.ean] }); p._sk = this.searchKey(p); }
       const t = tags[p.ean];
       if (!t || t.on === false || !defs[t.tag]) return p;
@@ -469,7 +472,11 @@ class Component extends DCLogic {
     if (sortFn) Object.values(byGroup).forEach(arr => arr.sort(sortFn));
     let totalVat = 0, pieceCount = 0;
     all.forEach(p => { const q = this.state.qty[p.ean] || 0; totalVat += q * p.price * VAT; pieceCount += q; });
-    const groups = Object.keys(byGroup).map(name => {
+    const g7order = window.GROUPS7 || [];
+    const groups = Object.keys(byGroup).sort((a, b) => {
+      const ia = g7order.indexOf(a), ib = g7order.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, 'cs');
+    }).map(name => {
       const limit = f ? 10000 : (this.state.shown[name] || 60);
       const total = byGroup[name].length;
       return {
@@ -499,7 +506,8 @@ class Component extends DCLogic {
         };
       })
     };});
-    const groupOptions = [...new Set(all.map(p => p.group))].sort((a, b) => a.localeCompare(b, 'cs'));
+    const groupSet = new Set(all.map(p => p.group));
+    const groupOptions = [...g7order.filter(g => groupSet.has(g)), ...[...groupSet].filter(g => !g7order.includes(g)).sort((a, b) => a.localeCompare(b, 'cs'))];
     const byEan = {}; all.forEach(p => { byEan[p.ean] = p; });
     const effT = this.effTags();
     const tagRows = Object.entries(effT)
