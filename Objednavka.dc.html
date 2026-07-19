@@ -194,72 +194,6 @@ input[type=number]{-moz-appearance:textfield}
 </div>
 </sc-if>
 
-  <sc-if value="{{ adminMode }}" hint-placeholder-val="{{ false }}">
-  <div class="no-print" style="margin-top:28px;border:1px dashed #b8b5ae;border-radius:10px;padding:16px 18px;background:#faf9f7">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <strong style="font-size:13px;color:#666">Správa databáze (admin)</strong>
-      <label style="display:inline-flex;align-items:center;padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Import Excel (mẫu gốc)<input type="file" accept=".xlsx" onChange="{{ onImport }}" style="display:none" /></label>
-      <button onClick="{{ downloadCatalog }}" style="padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Stáhnout products.js</button>
-      <button onClick="{{ resetCatalog }}" style="padding:9px 14px;border:1px solid #ccc;border-radius:7px;background:#fff;font-size:13px;cursor:pointer;color:#888" style-hover="border-color:#c0392b;color:#c0392b">Obnovit původní</button>
-      <span style="font-size:13px;font-weight:600;color:#0b7a3e">{{ importMsg }}</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
-      <strong style="font-size:13px;color:#666">Feed / API</strong>
-      <input type="text" value="{{ feedUrl }}" onInput="{{ onFeedUrl }}" placeholder="https://… (JSON, CSV nebo XLSX feed)" style="flex:1;min-width:240px;padding:9px 12px;font-size:13px;border:1px solid #ccc;border-radius:7px;outline:none;font-family:monospace" style-focus="border-color:#0b7a3e" />
-      <button onClick="{{ loadFeed }}" style="padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Načíst feed</button>
-      <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#666;cursor:pointer"><input type="checkbox" checked="{{ feedAuto }}" onChange="{{ onFeedAuto }}" />načítat při startu</label>
-    </div>
-    <p style="margin:10px 0 0;font-size:12px;color:#999;line-height:1.5">Import / feed platí okamžitě v tomto prohlížeči (uloženo lokálně). Pro trvalou změnu pro všechny zákazníky nahrajte stažený <span style="font-family:monospace">products.js</span> na GitHub / hosting, nebo zapněte feed s „načítat při startu". Feed musí povolovat CORS. Podporované formáty: JSON pole, CSV (hlavička jako v Excelu), XLSX.</p>
-  </div>
-
-  <div class="no-print" style="margin-top:16px;border:1px dashed #b8b5ae;border-radius:10px;padding:16px 18px;background:#faf9f7">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <strong style="font-size:13px;color:#666">Prodejní ceny (admin) · Giá bán</strong>
-      <label style="display:inline-flex;align-items:center;padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Import cen (.xlsx / .csv)<input type="file" accept=".xlsx,.csv" onChange="{{ onPriceImport }}" style="display:none" /></label>
-      <button onClick="{{ downloadPrices }}" style="padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Stáhnout prices.json</button>
-      <button onClick="{{ clearPrices }}" style="padding:9px 14px;border:1px solid #ccc;border-radius:7px;background:#fff;font-size:13px;cursor:pointer;color:#888" style-hover="border-color:#c0392b;color:#c0392b">Smazat vše</button>
-      <span style="font-size:12.5px;color:#888">{{ priceCount }} cen</span>
-      <span style="font-size:13px;font-weight:600;color:#0b7a3e">{{ priceMsg }}</span>
-    </div>
-    <p style="margin:10px 0 0;font-size:12px;color:#999;line-height:1.5">Feed z voph.cz ceny nepřepisuje — prodejní ceny se berou z tohoto importu. Formát: sloupec A = EAN, B = prodejní cena <strong>netto</strong> (bez DPH). Změny platí okamžitě v tomto prohlížeči; pro všechny zákazníky stáhněte <span style="font-family:monospace">prices.json</span> a nahrajte na GitHub.</p>
-  </div>
-
-  <div class="no-print" style="margin-top:16px;border:1px dashed #b8b5ae;border-radius:10px;padding:16px 18px;background:#faf9f7">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <strong style="font-size:13px;color:#666">Akce &amp; štítky (admin) · Khuyến mãi &amp; nhãn</strong>
-      <label style="display:inline-flex;align-items:center;padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Import akcí (.xlsx / .csv)<input type="file" accept=".xlsx,.csv" onChange="{{ onTagImport }}" style="display:none" /></label>
-      <select value="{{ tagFilter }}" onChange="{{ onTagFilter }}" style="padding:9px 12px;font-size:13px;border:1px solid #ccc;border-radius:7px;background:#fff;outline:none;cursor:pointer">
-        <option value="">Všechny štítky / Tất cả nhãn</option>
-        <option value="akce">Akce / Khuyến mãi</option>
-        <option value="sleva">Sleva / Giảm giá</option>
-        <option value="top">Bestseller / Bán chạy</option>
-        <option value="vyprodej">Výprodej / Xả kho</option>
-      </select>
-      <button onClick="{{ downloadTags }}" style="padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Stáhnout tags.json</button>
-      <button onClick="{{ clearTags }}" style="padding:9px 14px;border:1px solid #ccc;border-radius:7px;background:#fff;font-size:13px;cursor:pointer;color:#888" style-hover="border-color:#c0392b;color:#c0392b">Smazat vše</button>
-      <span style="font-size:13px;font-weight:600;color:#0b7a3e">{{ tagMsg }}</span>
-    </div>
-    <p style="margin:10px 0 0;font-size:12px;color:#999;line-height:1.5">Formát souboru: sloupec A = EAN, B = štítek (akce / sleva / top / vyprodej), C = akční cena s DPH (nepovinné — nechte prázdné pro pouhý štítek). Změny platí okamžitě v tomto prohlížeči; pro všechny zákazníky stáhněte <span style="font-family:monospace">tags.json</span> a nahrajte na GitHub.</p>
-    <sc-for list="{{ tagRows }}" as="tr" hint-placeholder-count="0">
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #eee;flex-wrap:wrap">
-        <span style="font-family:monospace;font-size:11px;color:#888;width:104px">{{ tr.ean }}</span>
-        <span style="flex:1;min-width:190px;font-size:12.5px;color:{{ tr.nameColor }}">{{ tr.name }}</span>
-        <select value="{{ tr.tag }}" onChange="{{ tr.onTag }}" style="padding:7px 9px;font-size:12px;border:1px solid #ccc;border-radius:6px;background:#fff;outline:none;cursor:pointer">
-          <option value="akce">Akce</option>
-          <option value="sleva">Sleva</option>
-          <option value="top">Bestseller</option>
-          <option value="vyprodej">Výprodej</option>
-        </select>
-        <input type="number" min="0" step="0.01" value="{{ tr.priceStr }}" onInput="{{ tr.onPrice }}" placeholder="cena s DPH" style="width:96px;padding:7px 9px;font-size:12px;border:1px solid #ccc;border-radius:6px;outline:none;box-sizing:border-box" style-focus="border-color:#0b7a3e" />
-        <button onClick="{{ tr.toggle }}" style="padding:7px 11px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:12px;font-weight:600;cursor:pointer;min-width:78px;color:{{ tr.onColor }}" style-hover="border-color:#0b7a3e">{{ tr.onLabel }}</button>
-        <button onClick="{{ tr.del }}" style="width:30px;height:30px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:13px;cursor:pointer;color:#888" style-hover="border-color:#c0392b;color:#c0392b">✕</button>
-      </div>
-    </sc-for>
-    <sc-if value="{{ noTags }}" hint-placeholder-val="{{ true }}">
-      <p style="margin:12px 0 0;font-size:12px;color:#aaa;font-style:italic">Zatím žádné štítky — importujte soubor s akcemi. / Chưa có nhãn nào — hãy import file khuyến mãi.</p>
-    </sc-if>
-  </div>
-  </sc-if>
 </div>
 
 <sc-if value="{{ scanOpen }}" hint-placeholder-val="{{ false }}">
@@ -284,7 +218,6 @@ class Component extends DCLogic {
     try {
       const s = localStorage.getItem('voph_catalog_v1'); if (s) this.setState({ catalog: JSON.parse(s) });
       const tl = localStorage.getItem('voph_tags_v1'); if (tl) this.setState({ tags: JSON.parse(tl) });
-      if (/[?#&]admin/.test(location.search + location.hash)) this.setState({ adminMode: true });
       const pl = localStorage.getItem('voph_prices_v1'); if (pl) this.setState({ prices: JSON.parse(pl) });
       const cfg = window.CONFIG || {};
       const u = localStorage.getItem('voph_feed_url') || cfg.feedUrl || '';
