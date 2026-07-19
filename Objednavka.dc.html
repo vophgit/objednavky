@@ -76,6 +76,13 @@ input[type=number]{-moz-appearance:textfield}
       <option value="priceAsc">Cena od nejnižší / Giá thấp → cao</option>
       <option value="priceDesc">Cena od nejvyšší / Giá cao → thấp</option>
     </select>
+    <select value="{{ custTag }}" onChange="{{ onCustTag }}" style="padding:10px 12px;font-size:14px;border:1px solid #ccc;border-radius:8px;background:#fff;outline:none;cursor:pointer">
+      <option value="">Vše / Tất cả hàng</option>
+      <option value="akce">Akce / Khuyến mãi</option>
+      <option value="sleva">Sleva / Giảm giá</option>
+      <option value="top">Bestseller / Bán chạy</option>
+      <option value="vyprodej">Výprodej / Xả kho</option>
+    </select>
   </div>
   </div>
 
@@ -207,6 +214,18 @@ input[type=number]{-moz-appearance:textfield}
 
   <div class="no-print" style="margin-top:16px;border:1px dashed #b8b5ae;border-radius:10px;padding:16px 18px;background:#faf9f7">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <strong style="font-size:13px;color:#666">Prodejní ceny (admin) · Giá bán</strong>
+      <label style="display:inline-flex;align-items:center;padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Import cen (.xlsx / .csv)<input type="file" accept=".xlsx,.csv" onChange="{{ onPriceImport }}" style="display:none" /></label>
+      <button onClick="{{ downloadPrices }}" style="padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Stáhnout prices.json</button>
+      <button onClick="{{ clearPrices }}" style="padding:9px 14px;border:1px solid #ccc;border-radius:7px;background:#fff;font-size:13px;cursor:pointer;color:#888" style-hover="border-color:#c0392b;color:#c0392b">Smazat vše</button>
+      <span style="font-size:12.5px;color:#888">{{ priceCount }} cen</span>
+      <span style="font-size:13px;font-weight:600;color:#0b7a3e">{{ priceMsg }}</span>
+    </div>
+    <p style="margin:10px 0 0;font-size:12px;color:#999;line-height:1.5">Feed z voph.cz ceny nepřepisuje — prodejní ceny se berou z tohoto importu. Formát: sloupec A = EAN, B = prodejní cena <strong>netto</strong> (bez DPH). Změny platí okamžitě v tomto prohlížeči; pro všechny zákazníky stáhněte <span style="font-family:monospace">prices.json</span> a nahrajte na GitHub.</p>
+  </div>
+
+  <div class="no-print" style="margin-top:16px;border:1px dashed #b8b5ae;border-radius:10px;padding:16px 18px;background:#faf9f7">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <strong style="font-size:13px;color:#666">Akce &amp; štítky (admin) · Khuyến mãi &amp; nhãn</strong>
       <label style="display:inline-flex;align-items:center;padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:#0b7a3e;color:#0b7a3e">Import akcí (.xlsx / .csv)<input type="file" accept=".xlsx,.csv" onChange="{{ onTagImport }}" style="display:none" /></label>
       <select value="{{ tagFilter }}" onChange="{{ onTagFilter }}" style="padding:9px 12px;font-size:13px;border:1px solid #ccc;border-radius:7px;background:#fff;outline:none;cursor:pointer">
@@ -256,15 +275,17 @@ input[type=number]{-moz-appearance:textfield}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;orderEmail&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;info@voph.cz&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;minOrder&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:15000,&quot;min&quot;:0,&quot;max&quot;:50000,&quot;unit&quot;:&quot;Kč&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;vatPercent&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:21,&quot;min&quot;:0,&quot;max&quot;:30,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;}}">
 class Component extends DCLogic {
-  state = { qty: {}, filter: '', ico: '', adresa: '', telefon: '', email: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: '', groupSel: '', scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false };
+  state = { qty: {}, filter: '', ico: '', adresa: '', telefon: '', email: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: '', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false };
   fmt(n) { return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   componentDidMount() {
     fetch('./products.json').then(r => r.ok ? r.json() : null).then(d => { if (Array.isArray(d)) this.setState({ baseCatalog: d }); }).catch(() => {});
     fetch('./tags.json').then(r => r.ok ? r.json() : null).then(d => { if (d && typeof d === 'object' && !Array.isArray(d)) this.setState({ baseTags: d }); }).catch(() => {});
+    fetch('./prices.json').then(r => r.ok ? r.json() : null).then(d => { if (d && typeof d === 'object' && !Array.isArray(d)) this.setState({ basePrices: d }); }).catch(() => {});
     try {
       const s = localStorage.getItem('voph_catalog_v1'); if (s) this.setState({ catalog: JSON.parse(s) });
       const tl = localStorage.getItem('voph_tags_v1'); if (tl) this.setState({ tags: JSON.parse(tl) });
       if (/[?#&]admin/.test(location.search + location.hash)) this.setState({ adminMode: true });
+      const pl = localStorage.getItem('voph_prices_v1'); if (pl) this.setState({ prices: JSON.parse(pl) });
       const cfg = window.CONFIG || {};
       const u = localStorage.getItem('voph_feed_url') || cfg.feedUrl || '';
       const autoStored = localStorage.getItem('voph_feed_auto');
@@ -428,9 +449,33 @@ class Component extends DCLogic {
     try { localStorage.setItem('voph_tags_v1', JSON.stringify(tags)); } catch (e) {}
     this.setState({ tags });
   }
+  effPrices() { return { ...this.state.basePrices, ...this.state.prices }; }
+  async importPrices(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      let rows;
+      if (/\.xlsx$/i.test(file.name)) rows = await window.parseXlsxRows(await file.arrayBuffer());
+      else rows = String(await file.text()).replace(/\r/g, '').split('\n').map(l => l.split(/[;,\t]/).map(c => c.replace(/^"|"$/g, '')));
+      let n = 0; const prices = { ...this.state.prices };
+      for (const r of rows) {
+        const ean = String(r[0] || '').replace(/\.0+$/, '').trim();
+        const pr = parseFloat(String(r[1] || '').replace(',', '.'));
+        if (!/^\d{8,14}$/.test(ean) || !(pr >= 0)) continue;
+        prices[ean] = Math.round(pr * 100) / 100; n++;
+      }
+      if (!n) throw new Error('žádné platné řádky (A = EAN, B = cena netto)');
+      try { localStorage.setItem('voph_prices_v1', JSON.stringify(prices)); } catch (err) {}
+      this.setState({ prices, priceMsg: 'Importováno ' + n + ' cen ✓' });
+    } catch (err) {
+      this.setState({ priceMsg: 'Chyba importu: ' + err.message });
+    }
+    e.target.value = '';
+  }
   decorated(VAT) {
-    const tags = this.effTags(), defs = this.tagDefs();
+    const tags = this.effTags(), defs = this.tagDefs(), prices = this.effPrices();
     return this.catalogAll().map(p => {
+      if (prices[p.ean] != null) { p = Object.assign({}, p, { price: prices[p.ean] }); p._sk = this.searchKey(p); }
       const t = tags[p.ean];
       if (!t || t.on === false || !defs[t.tag]) return p;
       const d = Object.assign({}, p, { _tag: t.tag, _sk: this.searchKey(p) });
@@ -483,7 +528,8 @@ class Component extends DCLogic {
     const all = this.decorated(VAT);
     const f = window.searchNorm ? window.searchNorm(this.state.filter.trim()) : this.state.filter.trim().toLowerCase();
     const filtered0 = f ? all.filter(p => this.searchKey(p).includes(f)) : all;
-    const filtered = this.state.groupSel ? filtered0.filter(p => p.group === this.state.groupSel) : filtered0;
+    const filtered1 = this.state.groupSel ? filtered0.filter(p => p.group === this.state.groupSel) : filtered0;
+    const filtered = this.state.custTag ? filtered1.filter(p => p._tag === this.state.custTag) : filtered1;
     const byGroup = {};
     filtered.forEach(p => { (byGroup[p.group] = byGroup[p.group] || []).push(p); });
     const sortFn = { name: (a, b) => a.name.localeCompare(b.name, 'cs'), priceAsc: (a, b) => a.price - b.price, priceDesc: (a, b) => b.price - a.price }[this.state.sort];
@@ -559,6 +605,7 @@ class Component extends DCLogic {
       loadFeed: () => this.loadFeed(),
       onFilter: (e) => this.setState({ filter: e.target.value }),
       sort: this.state.sort, onSort: (e) => this.setState({ sort: e.target.value }),
+      custTag: this.state.custTag, onCustTag: (e) => this.setState({ custTag: e.target.value }),
       scanOpen: this.state.scanOpen, scanErr: this.state.scanErr,
       orderOpen: this.state.orderOpen, adminMode: this.state.adminMode,
       openOrder: () => this.setState({ orderOpen: true, sendError: '' }),
@@ -573,6 +620,18 @@ class Component extends DCLogic {
       tagFilter: this.state.tagFilter, onTagFilter: (e) => this.setState({ tagFilter: e.target.value }),
       tagRows, noTags: tagRows.length === 0, tagMsg: this.state.tagMsg,
       onTagImport: (e) => this.importTags(e),
+      priceMsg: this.state.priceMsg, priceCount: Object.keys(this.effPrices()).length,
+      onPriceImport: (e) => this.importPrices(e),
+      downloadPrices: () => {
+        const blob = new Blob([JSON.stringify(this.effPrices(), null, 1)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'prices.json'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      },
+      clearPrices: () => {
+        try { localStorage.removeItem('voph_prices_v1'); } catch (e) {}
+        this.setState({ prices: {}, basePrices: {}, priceMsg: 'Ceny smazány (v prohlížeči) — pro trvalé smazání nahrajte prázdný prices.json' });
+      },
       downloadTags: () => {
         const blob = new Blob([JSON.stringify(this.effTags(), null, 1)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
