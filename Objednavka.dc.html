@@ -165,7 +165,31 @@ input[type=number]{-moz-appearance:textfield}
 <div class="no-print" style="position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.5);overflow-y:auto;padding:30px 16px;box-sizing:border-box">
   <div style="background:#fff;border-radius:12px;padding:22px;max-width:660px;width:100%;margin:0 auto;position:relative;box-shadow:0 10px 40px rgba(0,0,0,.3)">
     <button onClick="{{ closeOrder }}" style="position:absolute;top:12px;right:12px;width:34px;height:34px;border:1px solid #ccc;border-radius:8px;background:#fff;font-size:15px;cursor:pointer;color:#666" style-hover="border-color:#c0392b;color:#c0392b">✕</button>
-    <h2 style="margin:0;font-size:22px;color:#2c4a8a;padding-right:44px">Vaše kontaktní údaje:</h2>
+    <h2 style="margin:0;font-size:22px;color:#0b7a3e;padding-right:44px">Vaše objednávka ({{ reviewCount }}) · Đơn hàng của bạn</h2>
+    <div style="max-height:360px;overflow-y:auto;margin:14px 0;border:1px solid #eee;border-radius:8px">
+      <sc-for list="{{ reviewRows }}" as="row" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0efec">
+          <span style="width:20px;text-align:right;font-size:12px;color:#aaa;flex:none">{{ row.n }}</span>
+          <sc-if value="{{ row.hasImg }}" hint-placeholder-val="{{ false }}">
+            <img src="{{ row.img }}" alt="{{ row.name }}" style="width:44px;height:44px;object-fit:contain;background:#fafafa;border:1px solid #eee;border-radius:6px;flex:none" />
+          </sc-if>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13.5px;font-weight:600;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.name }}</div>
+            <sc-if value="{{ row.nameVi }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11.5px;color:#888;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ row.nameVi }}</div>
+            </sc-if>
+            <div style="font-size:10.5px;color:#aaa">Kód {{ row.code }} · EAN {{ row.ean }}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex:none">
+            <button onClick="{{ row.dec }}" style="width:26px;height:26px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer;font-size:14px;color:#666">−</button>
+            <span style="min-width:26px;text-align:center;font-size:13.5px;font-weight:700">{{ row.qty }}</span>
+            <button onClick="{{ row.inc }}" style="width:26px;height:26px;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer;font-size:14px;color:#666">+</button>
+          </div>
+          <div style="width:92px;text-align:right;font-size:13.5px;font-weight:700;color:#0b7a3e;flex:none">{{ row.lineTotalDisplay }} Kč</div>
+        </div>
+      </sc-for>
+    </div>
+    <h2 style="margin:18px 0 0;font-size:20px;color:#2c4a8a">Vaše kontaktní údaje:</h2>
     <p style="margin:2px 0 14px;font-size:15px;color:#9aa3b5">Thông tin liên hệ — všechna pole povinná / bắt buộc</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div style="display:flex;flex-direction:column;gap:5px">
@@ -196,15 +220,20 @@ input[type=number]{-moz-appearance:textfield}
     <div style="display:flex;justify-content:center;margin-top:16px">
       <button onClick="{{ send }}" style="min-width:280px;padding:15px 30px;font-size:19px;font-weight:600;border:1px solid #888;border-radius:8px;cursor:pointer;background:linear-gradient(#fdfdfd,#cfd8e2);color:#1c1c1c" style-hover="background:linear-gradient(#fff,#bcc9d8)">Odeslat – Gửi</button>
     </div>
-    <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
-      <div style="margin-top:16px;background:#eaf6ee;border:1px solid #0b7a3e;border-radius:8px;padding:14px;font-size:14px;line-height:1.5">
-        <strong style="color:#0b7a3e">{{ sentTitle }}</strong><br />
-        {{ sentMsg }}<br />
-        <span style="color:#777">{{ sentMsgVi }}</span>
-      </div>
-    </sc-if>
   </div>
 </div>
+</sc-if>
+
+<sc-if value="{{ showToast }}" hint-placeholder-val="{{ false }}">
+  <div class="no-print" style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:110;background:#eaf6ee;border:1px solid #0b7a3e;border-radius:10px;padding:16px 20px;max-width:520px;width:calc(100% - 32px);box-shadow:0 8px 30px rgba(0,0,0,.25);display:flex;gap:12px;align-items:flex-start">
+    <span style="font-size:20px;line-height:1">✓</span>
+    <div style="flex:1;font-size:14px;line-height:1.5">
+      <strong style="color:#0b7a3e">{{ toastTitle }}</strong><br />
+      {{ toastMsg }}<br />
+      <span style="color:#777">{{ toastMsgVi }}</span>
+    </div>
+    <button onClick="{{ closeToast }}" style="flex:none;width:26px;height:26px;border:none;border-radius:50%;background:#dcefe1;color:#0b7a3e;font-size:13px;font-weight:700;cursor:pointer">✕</button>
+  </div>
 </sc-if>
 
 </div>
@@ -222,7 +251,7 @@ input[type=number]{-moz-appearance:textfield}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;orderEmail&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;info@voph.cz&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;minOrder&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:15000,&quot;min&quot;:0,&quot;max&quot;:50000,&quot;unit&quot;:&quot;Kč&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;vatPercent&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:21,&quot;min&quot;:0,&quot;max&quot;:30,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;}}">
 class Component extends DCLogic {
-  state = { qty: {}, filter: '', ico: '', adresa: '', telefon: '', email: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: 'name', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', baseGroups: {}, scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false };
+  state = { qty: {}, qtyOrder: [], filter: '', ico: '', adresa: '', telefon: '', email: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: 'name', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', baseGroups: {}, scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false };
   fmt(n) { return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   componentDidMount() {
     fetch('./products.json').then(r => r.ok ? r.json() : null).then(d => { if (Array.isArray(d)) this.setState({ baseCatalog: d }); }).catch(() => {});
@@ -471,7 +500,13 @@ class Component extends DCLogic {
   }
   setQty(ean, v) {
     const q = Math.max(0, Math.min(99999, Math.floor(v) || 0));
-    this.setState(s => ({ qty: { ...s.qty, [ean]: q }, sent: false }));
+    this.setState(s => {
+      const hadQty = (s.qty[ean] || 0) > 0;
+      let qtyOrder = s.qtyOrder;
+      if (q > 0 && !hadQty) qtyOrder = [...qtyOrder, ean];
+      else if (q === 0 && hadQty) qtyOrder = qtyOrder.filter(e => e !== ean);
+      return { qty: { ...s.qty, [ean]: q }, qtyOrder, sent: false };
+    });
   }
   renderVals() {
     const VAT = 1 + ((this.props.vatPercent ?? 21) / 100);
@@ -573,6 +608,20 @@ class Component extends DCLogic {
       orderOpen: this.state.orderOpen, adminMode: this.state.adminMode,
       openOrder: () => this.setState({ orderOpen: true, sendError: '' }),
       closeOrder: () => this.setState({ orderOpen: false }),
+      reviewRows: (() => {
+        const byEan = {}; all.forEach(p => { byEan[p.ean] = p; });
+        return this.state.qtyOrder.filter(e => (this.state.qty[e] || 0) > 0 && byEan[e]).map((e, i) => {
+          const p = byEan[e], q = this.state.qty[e];
+          return {
+            n: i + 1, ean: e, img: this.thumb(p.img), hasImg: !!p.img, name: p.name, nameVi: p.nameVi || '',
+            code: p.code, qty: q, priceVatDisplay: this.fmt(p.price * VAT), lineTotalDisplay: this.fmt(p.price * VAT * q),
+            dec: () => this.setQty(e, q - 1), inc: () => this.setQty(e, q + 1),
+          };
+        });
+      })(),
+      reviewCount: this.state.qtyOrder.filter(e => (this.state.qty[e] || 0) > 0).length,
+      closeToast: () => this.setState({ showToast: false }),
+      showToast: this.state.showToast, toastTitle: this.state.sentTitle, toastMsg: this.state.sentMsg, toastMsgVi: this.state.sentMsgVi,
       stickyTop: this.state.headerH + 'px',
       headerRef: (el) => this.watchHeader(el),
       openScan: () => this.openScan(),
@@ -622,7 +671,7 @@ class Component extends DCLogic {
         setTimeout(() => URL.revokeObjectURL(url), 5000);
       },
       resetCatalog: () => { try { localStorage.removeItem('voph_catalog_v1'); } catch (e) {} this.setState({ catalog: null, importMsg: 'Obnoveno původní (' + ((window.PRODUCTS || []).length) + ' položek)' }); },
-      reset: () => this.setState({ qty: {}, sent: false, sendError: '', tried: false }),
+      reset: () => this.setState({ qty: {}, qtyOrder: [], sent: false, sendError: '', tried: false }),
       send: () => this.send(minOrder, VAT),
     };
   }
@@ -648,7 +697,7 @@ class Component extends DCLogic {
         const detail = all.filter(p => (this.state.qty[p.ean] || 0) > 0).map(p => ({ ean: p.ean, code: p.code, name: p.name, nameVi: p.nameVi || '', qty: this.state.qty[p.ean], price: p.price, priceVat: Math.round(p.price * VAT * 100) / 100, img: p.img || '' }));
         const payload = { ico: this.state.ico, firma: this.state.aresName, adresa: this.state.adresa, telefon: this.state.telefon, email: this.state.email, items: detail, totalVat: Math.round(totalVat * 100) / 100, pieces: rows.reduce((s, r) => s + r.qty, 0), fname: fname, xlsxBase64: String(fr.result).split(',')[1], orderEmail: orderEmail, date: d.toLocaleString('cs-CZ') };
         fetch(ascUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) })
-          .then(() => this.setState({ sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, sentTitle: 'Objednávka odeslána ✓', sentMsg: 'Potvrzení objednávky (PDF) vám bylo zasláno na ' + this.state.email + '. Kopie s objednávkou odešla na ' + orderEmail + '.', sentMsgVi: 'Xác nhận đơn hàng (PDF) đã được gửi tới email của bạn.' }))
+          .then(() => this.setState({ sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, qtyOrder: [], orderOpen: false, showToast: true, sentTitle: 'Objednávka odeslána ✓', sentMsg: 'Potvrzení objednávky (PDF) vám bylo zasláno na ' + this.state.email + '. Kopie s objednávkou odešla na ' + orderEmail + '.', sentMsgVi: 'Xác nhận đơn hàng (PDF) đã được gửi tới email của bạn.' }))
           .catch(() => this.setState({ sendError: 'Odeslání se nezdařilo — zkuste to prosím znovu. / Gửi thất bại, hãy thử lại.' }));
       };
       fr.readAsDataURL(blob);
@@ -660,7 +709,7 @@ class Component extends DCLogic {
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     const body = 'Objednávka – ' + rows.length + ' položek, ' + rows.reduce((s, r) => s + r.qty, 0) + ' ks, ' + this.fmt(totalVat) + ' Kč s DPH.\n\nIČO: ' + this.state.ico + (this.state.aresName ? ' (' + this.state.aresName + ')' : '') + '\nDodací adresa: ' + this.state.adresa + '\nTelefon: ' + this.state.telefon + '\nE-mail: ' + this.state.email + '\n\nPřikládám soubor ' + fname + ' (prosím přiložte stažený soubor).';
     window.location.href = 'mailto:' + orderEmail + '?subject=' + encodeURIComponent('Objednávka ' + d.toLocaleDateString('cs-CZ')) + '&body=' + encodeURIComponent(body);
-    this.setState({ sent: true, sentFile: fname, sendError: '', tried: false, sentTitle: 'Objednávka připravena ✓', sentMsg: 'Soubor ' + fname + ' byl stažen a otevřel se e-mail na ' + orderEmail + ' — přiložte prosím stažený soubor.', sentMsgVi: 'File Excel đã tải xuống — hãy đính kèm vào email vừa mở và gửi đi.' });
+    this.setState({ sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, qtyOrder: [], orderOpen: false, showToast: true, sentTitle: 'Objednávka připravena ✓', sentMsg: 'Soubor ' + fname + ' byl stažen a otevřel se e-mail na ' + orderEmail + ' — přiložte prosím stažený soubor.', sentMsgVi: 'File Excel đã tải xuống — hãy đính kèm vào email vừa mở và gửi đi.' });
   }
   async importXlsx(e) {
     const file = e.target.files && e.target.files[0];
