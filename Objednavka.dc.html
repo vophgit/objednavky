@@ -262,6 +262,8 @@ class Component extends DCLogic {
       const s = localStorage.getItem('voph_catalog_v1'); if (s) this.setState({ catalog: JSON.parse(s) });
       const tl = localStorage.getItem('voph_tags_v1'); if (tl) this.setState({ tags: JSON.parse(tl) });
       const pl = localStorage.getItem('voph_prices_v1'); if (pl) this.setState({ prices: JSON.parse(pl) });
+      const cartRaw = localStorage.getItem('voph_cart_v1');
+      if (cartRaw) { const c = JSON.parse(cartRaw); if (c && c.qty && Array.isArray(c.qtyOrder)) this.setState({ qty: c.qty, qtyOrder: c.qtyOrder }); }
       const cfg = window.CONFIG || {};
       const u = localStorage.getItem('voph_feed_url') || cfg.feedUrl || '';
       const autoStored = localStorage.getItem('voph_feed_auto');
@@ -505,8 +507,16 @@ class Component extends DCLogic {
       let qtyOrder = s.qtyOrder;
       if (q > 0 && !hadQty) qtyOrder = [...qtyOrder, ean];
       else if (q === 0 && hadQty) qtyOrder = qtyOrder.filter(e => e !== ean);
-      return { qty: { ...s.qty, [ean]: q }, qtyOrder, sent: false };
+      const next = { qty: { ...s.qty, [ean]: q }, qtyOrder, sent: false };
+      this.saveCart(next.qty, next.qtyOrder);
+      return next;
     });
+  }
+  saveCart(qty, qtyOrder) {
+    try {
+      if (!qtyOrder.length) { localStorage.removeItem('voph_cart_v1'); return; }
+      localStorage.setItem('voph_cart_v1', JSON.stringify({ qty, qtyOrder }));
+    } catch (e) {}
   }
   renderVals() {
     const VAT = 1 + ((this.props.vatPercent ?? 21) / 100);
@@ -671,7 +681,7 @@ class Component extends DCLogic {
         setTimeout(() => URL.revokeObjectURL(url), 5000);
       },
       resetCatalog: () => { try { localStorage.removeItem('voph_catalog_v1'); } catch (e) {} this.setState({ catalog: null, importMsg: 'Obnoveno původní (' + ((window.PRODUCTS || []).length) + ' položek)' }); },
-      reset: () => { if (window.confirm('Opravdu chcete zrušit celou objednávku? / Bạn có chắc muốn hủy đơn hàng không?')) this.setState({ qty: {}, qtyOrder: [], sent: false, sendError: '', tried: false }); },
+      reset: () => { if (window.confirm('Opravdu chcete zrušit celou objednávku? / Bạn có chắc muốn hủy đơn hàng không?')) { this.saveCart({}, []); this.setState({ qty: {}, qtyOrder: [], sent: false, sendError: '', tried: false }); } },
       send: () => this.send(minOrder, VAT),
       sending: this.state.sending,
       sendLabel: this.state.sending ? 'Odesílám… – Đang gửi…' : 'Odeslat – Gửi',
@@ -702,7 +712,7 @@ class Component extends DCLogic {
         const detail = all.filter(p => (this.state.qty[p.ean] || 0) > 0).map(p => ({ ean: p.ean, code: p.code, name: p.name, nameVi: p.nameVi || '', qty: this.state.qty[p.ean], price: p.price, priceVat: Math.round(p.price * VAT * 100) / 100, img: p.img || '' }));
         const payload = { ico: this.state.ico, firma: this.state.aresName, adresa: this.state.adresa, telefon: this.state.telefon, email: this.state.email, items: detail, totalVat: Math.round(totalVat * 100) / 100, pieces: rows.reduce((s, r) => s + r.qty, 0), fname: fname, xlsxBase64: String(fr.result).split(',')[1], orderEmail: orderEmail, date: d.toLocaleString('cs-CZ') };
         fetch(ascUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) })
-          .then(() => this.setState({ sending: false, sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, qtyOrder: [], orderOpen: false, showToast: true, sentTitle: 'Objednávka odeslána ✓', sentMsg: 'Potvrzení objednávky (PDF) vám bylo zasláno na ' + this.state.email + '. Kopie s objednávkou odešla na ' + orderEmail + '.', sentMsgVi: 'Xác nhận đơn hàng (PDF) đã được gửi tới email của bạn.' }))
+          .then(() => { this.saveCart({}, []); this.setState({ sending: false, sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, qtyOrder: [], orderOpen: false, showToast: true, sentTitle: 'Objednávka odeslána ✓', sentMsg: 'Potvrzení objednávky (PDF) vám bylo zasláno na ' + this.state.email + '. Kopie s objednávkou odešla na ' + orderEmail + '.', sentMsgVi: 'Xác nhận đơn hàng (PDF) đã được gửi tới email của bạn.' }); })
           .catch(() => this.setState({ sending: false, sendError: 'Odeslání se nezdařilo — zkuste to prosím znovu. / Gửi thất bại, hãy thử lại.' }));
       };
       fr.readAsDataURL(blob);
@@ -714,6 +724,7 @@ class Component extends DCLogic {
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     const body = 'Objednávka – ' + rows.length + ' položek, ' + rows.reduce((s, r) => s + r.qty, 0) + ' ks, ' + this.fmt(totalVat) + ' Kč s DPH.\n\nIČO: ' + this.state.ico + (this.state.aresName ? ' (' + this.state.aresName + ')' : '') + '\nDodací adresa: ' + this.state.adresa + '\nTelefon: ' + this.state.telefon + '\nE-mail: ' + this.state.email + '\n\nPřikládám soubor ' + fname + ' (prosím přiložte stažený soubor).';
     window.location.href = 'mailto:' + orderEmail + '?subject=' + encodeURIComponent('Objednávka ' + d.toLocaleDateString('cs-CZ')) + '&body=' + encodeURIComponent(body);
+    this.saveCart({}, []);
     this.setState({ sending: false, sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, qtyOrder: [], orderOpen: false, showToast: true, sentTitle: 'Objednávka připravena ✓', sentMsg: 'Soubor ' + fname + ' byl stažen a otevřel se e-mail na ' + orderEmail + ' — přiložte prosím stažený soubor.', sentMsgVi: 'File Excel đã tải xuống — hãy đính kèm vào email vừa mở và gửi đi.' });
   }
   async importXlsx(e) {
