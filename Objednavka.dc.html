@@ -517,6 +517,31 @@ class Component extends DCLogic {
       if (!qtyOrder.length) { localStorage.removeItem('voph_cart_v1'); return; }
       localStorage.setItem('voph_cart_v1', JSON.stringify({ qty, qtyOrder }));
     } catch (e) {}
+    this.scheduleDraft();
+  }
+  getSessionId() {
+    let id = localStorage.getItem('voph_session_id');
+    if (!id) { id = 'S' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); localStorage.setItem('voph_session_id', id); }
+    return id;
+  }
+  // Gửi bản nháp giỏ hàng lên Sheet (tab "Rozpracované (koš)") vài giây sau lần nhập cuối — để kiểm tra được đơn khách chưa/không gửi được.
+  scheduleDraft() {
+    clearTimeout(this._draftTimer);
+    if (!this.state.qtyOrder.length) return;
+    this._draftTimer = setTimeout(() => this.sendDraft('Rozpracováno (koš)'), 2500);
+  }
+  sendDraft(status) {
+    const cfg = window.CONFIG || {};
+    const ascUrl = (this.props.appsScriptUrl ?? cfg.appsScriptUrl) || '';
+    if (!ascUrl || !this.state.qtyOrder.length) return;
+    const s = this.state;
+    const VAT = 1 + ((this.props.vatPercent ?? 21) / 100);
+    const all = this.decorated(VAT);
+    const rows = all.filter(p => (s.qty[p.ean] || 0) > 0).map(p => ({ ean: p.ean, code: p.code, name: p.name, qty: s.qty[p.ean], price: p.price }));
+    if (!rows.length) return;
+    const totalVat = rows.reduce((sum, r) => sum + r.qty * r.price * VAT, 0);
+    const payload = { type: 'draft', session: this.getSessionId(), status, ico: s.ico, firma: s.aresName, adresa: s.adresa, telefon: s.telefon, email: s.email, items: rows, totalVat: Math.round(totalVat * 100) / 100, pieces: rows.reduce((sum, r) => sum + r.qty, 0) };
+    fetch(ascUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) }).catch(() => {});
   }
   renderVals() {
     const VAT = 1 + ((this.props.vatPercent ?? 21) / 100);
@@ -710,10 +735,10 @@ class Component extends DCLogic {
       const fr = new FileReader();
       fr.onload = () => {
         const detail = all.filter(p => (this.state.qty[p.ean] || 0) > 0).map(p => ({ ean: p.ean, code: p.code, name: p.name, nameVi: p.nameVi || '', qty: this.state.qty[p.ean], price: p.price, priceVat: Math.round(p.price * VAT * 100) / 100, img: p.img || '' }));
-        const payload = { ico: this.state.ico, firma: this.state.aresName, adresa: this.state.adresa, telefon: this.state.telefon, email: this.state.email, items: detail, totalVat: Math.round(totalVat * 100) / 100, pieces: rows.reduce((s, r) => s + r.qty, 0), fname: fname, xlsxBase64: String(fr.result).split(',')[1], orderEmail: orderEmail, date: d.toLocaleString('cs-CZ') };
+        const payload = { ico: this.state.ico, firma: this.state.aresName, adresa: this.state.adresa, telefon: this.state.telefon, email: this.state.email, items: detail, totalVat: Math.round(totalVat * 100) / 100, pieces: rows.reduce((s, r) => s + r.qty, 0), fname: fname, xlsxBase64: String(fr.result).split(',')[1], orderEmail: orderEmail, date: d.toLocaleString('cs-CZ'), session: this.getSessionId() };
         fetch(ascUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) })
-          .then(() => { this.saveCart({}, []); this.setState({ sending: false, sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, qtyOrder: [], orderOpen: false, showToast: true, sentTitle: 'Objednávka odeslána ✓', sentMsg: 'Potvrzení objednávky (PDF) vám bylo zasláno na ' + this.state.email + '. Kopie s objednávkou odešla na ' + orderEmail + '.', sentMsgVi: 'Xác nhận đơn hàng (PDF) đã được gửi tới email của bạn.' }); })
-          .catch(() => this.setState({ sending: false, sendError: 'Odeslání se nezdařilo — zkuste to prosím znovu. / Gửi thất bại, hãy thử lại.' }));
+          .then(() => { clearTimeout(this._draftTimer); this.saveCart({}, []); localStorage.removeItem('voph_session_id'); this.setState({ sending: false, sent: true, sentFile: fname, sendError: '', tried: false, qty: {}, qtyOrder: [], orderOpen: false, showToast: true, sentTitle: 'Objednávka odeslána ✓', sentMsg: 'Potvrzení objednávky (PDF) vám bylo zasláno na ' + this.state.email + '. Kopie s objednávkou odešla na ' + orderEmail + '.', sentMsgVi: 'Xác nhận đơn hàng (PDF) đã được gửi tới email của bạn.' }); })
+          .catch(() => { this.sendDraft('CHYBA ODESLÁNÍ — zkontrolovat ručně'); this.setState({ sending: false, sendError: 'Odeslání se nezdařilo — objednávka byla uložena, ozveme se / zkuste to prosím znovu. / Gửi thất bại — đơn đã được lưu lại, thử gửi lại.' }); });
       };
       fr.readAsDataURL(blob);
       return;
