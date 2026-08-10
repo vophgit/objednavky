@@ -1,9 +1,11 @@
-# Tự động tải feed voph.cz mỗi đêm và cập nhật products.json
+# Tự động tải feed voph.cz + Levior mỗi đêm và cập nhật products.json
 name: Aktualizace feedu
 on:
   schedule:
-    - cron: '30 0 * * *' # 2:30 giờ Séc (mùa hè CEST)
-    - cron: '30 1 * * *' # 2:30 giờ Séc (mùa đông CET) — chạy 2 lần không sao
+    - cron: '15 0 * * *' # 2:15 giờ Séc (CEST) — Levior (đọc file đã commit trong repo)
+    - cron: '15 1 * * *' # 2:15 giờ Séc (CET)
+    - cron: '30 0 * * *' # 2:30 giờ Séc (CEST) — voph.cz
+    - cron: '30 1 * * *' # 2:30 giờ Séc (CET)
   workflow_dispatch: {} # cho phép bấm "Run workflow" bằng tay
 permissions:
   contents: write
@@ -11,11 +13,13 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
-      - name: Tải feed
+      - name: Levior feed (soubor v repu)
+        run: node scripts/update-levior-feed.mjs
+      - name: Tải feed voph.cz
         run: node scripts/update-feed.mjs
       - name: Commit nếu có thay đổi
         run: |
