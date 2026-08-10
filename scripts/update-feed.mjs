@@ -20,6 +20,10 @@ const tag = (s, n) => {
 };
 
 const [feedXml, availXml] = await Promise.all([get(FEED), get(AVAIL).catch(() => '')]);
+// Prodejní ceny se z feedu NEberou — zachováme stávající ceny z products.json (import ceny dělá admin přes prices.json).
+let oldPrices = {};
+let oldProducts = [];
+try { oldProducts = JSON.parse(readFileSync(new URL('../products.json', import.meta.url), 'utf8')); for (const p of oldProducts) oldPrices[p.ean] = p.price; } catch (e) {}
 const stock = {};
 for (const m of availXml.matchAll(/<item id="([^"]+)">\s*<stock_quantity>(\d+)/g)) stock[m[1]] = +m[2];
 
@@ -30,17 +34,22 @@ const prods = items.map((s) => {
   const pv = parseFloat(tag(s, 'PRICE_VAT')) || 0;
   const code = tag(s, 'ITEM_ID');
   const name = tag(s, 'PRODUCTNAME') || tag(s, 'PRODUCT');
+  const ean = tag(s, 'EAN');
   return {
-    code, ean: tag(s, 'EAN'), name,
+    code, ean, name,
     group: parts[parts.length - 1] || 'Ostatní',
     cat: parts.join(' | '),
-    price: Math.round((pv / (1 + vat / 100)) * 100) / 100,
+    price: oldPrices[ean] != null ? oldPrices[ean] : Math.round((pv / (1 + vat / 100)) * 100) / 100,
     stock: stock[code] || 0, pack: 1, dph: 'ZS',
     img: (s.match(/<IMGURL>([\s\S]*?)<\/IMGURL>/) || [])[1] || '',
     nameVi: viTranslate(name),
+    src: 'voph',
   };
 }).filter((p) => p.ean && p.name);
 
 if (prods.length < 10) throw new Error('Feed chỉ có ' + prods.length + ' sản phẩm — không ghi đè products.json (có thể feed lỗi).');
-writeFileSync(new URL('../products.json', import.meta.url), JSON.stringify(prods));
-console.log('OK — ' + prods.length + ' sản phẩm, ' + Object.keys(stock).length + ' mục tồn kho.');
+// Giữ nguyên các mặt hàng đến từ nguồn khác (vd. Levior) — chỉ thay thế phần voph.cz.
+const kept = oldProducts.filter((p) => p.src && p.src !== 'voph');
+const merged = prods.concat(kept.filter((p) => !prods.some((np) => np.ean === p.ean)));
+writeFileSync(new URL('../products.json', import.meta.url), JSON.stringify(merged));
+console.log('OK — ' + prods.length + ' sản phẩm voph.cz (+ ' + (merged.length - prods.length) + ' giữ nguyên từ nguồn khác), ' + Object.keys(stock).length + ' mục tồn kho.');
