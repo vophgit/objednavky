@@ -118,6 +118,7 @@ for (let i = 1; i < rows.length; i++) {
     dph: vatPct === 21 ? 'ZS' : 'SS',
     img: r.O || '',
     nameVi: viTranslate(name),
+    mfgCode: r.A || '',
     src: 'levior',
   });
 }
