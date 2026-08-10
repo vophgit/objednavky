@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VOPH — Administrace (soukromý soubor)</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f2f1ee;color:#222;margin:0;padding:24px;font-size:14px}
+.wrap{max-width:980px;margin:0 auto}
+h1{font-size:22px;color:#0b7a3e;margin:0 0 4px}
+.sub{color:#888;font-size:12.5px;margin:0 0 20px}
+.box{background:#fff;border:1px dashed #b8b5ae;border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.box h2{font-size:14px;color:#666;margin:0 0 10px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+button,label.btn{padding:9px 14px;border:1px solid #999;border-radius:7px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#222}
+button:hover,label.btn:hover{border-color:#0b7a3e;color:#0b7a3e}
+button.danger{border-color:#ccc;color:#888;font-weight:400}
+button.danger:hover{border-color:#c0392b;color:#c0392b}
+input[type=text],input[type=number],select{padding:8px 10px;font-size:13px;border:1px solid #ccc;border-radius:7px;outline:none}
+input:focus,select:focus{border-color:#0b7a3e}
+.msg{font-weight:700;color:#0b7a3e;font-size:13px}
+.err{color:#c0392b}
+.hint{margin:10px 0 0;font-size:12px;color:#999;line-height:1.5}
+.trow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #eee;flex-wrap:wrap}
+.trow .ean{font-family:monospace;font-size:11px;color:#888;width:104px}
+.trow img.th{width:36px;height:36px;object-fit:contain;background:#fafafa;border:1px solid #eee;border-radius:5px;flex:none}
+.trow .noimg{width:36px;height:36px;background:#f4f3f0;border:1px solid #eee;border-radius:5px;flex:none}
+.trow .nm{flex:1;min-width:190px;font-size:12.5px}
+.count{font-size:12.5px;color:#888}
+code{background:#f4f3f0;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>VOPH — Administrace</h1>
+<p class="sub">Soubor je jen na vašem počítači — NENAHRÁVEJTE ho na GitHub. / File này chỉ nằm trên máy bạn — KHÔNG upload lên GitHub.</p>
+
+<div class="box">
+  <h2>1) Načíst aktuální data z webu</h2>
+  <div class="row">
+    <input type="text" id="siteUrl" style="flex:1;min-width:280px;font-family:monospace" value="https://vophgit.github.io/objednavky/">
+    <button onclick="loadAll()">Načíst data</button>
+    <span class="msg" id="loadMsg"></span>
+  </div>
+  <p class="hint">Tải products.json + tags.json + prices.json hiện có trên web về để xem tên hàng và chỉnh sửa tiếp.</p>
+</div>
+
+<div class="box">
+  <h2>Prodejní ceny · Giá bán (netto)</h2>
+  <div class="row">
+    <label class="btn">Import cen (.xlsx / .csv)<input type="file" accept=".xlsx,.csv" style="display:none" onchange="importPrices(this)"></label>
+    <button onclick="downloadJson(prices,'prices.json')">Stáhnout prices.json</button>
+    <button class="danger" onclick="prices={};renderPrices();msg('priceMsg','Smazáno — stáhněte a nahrajte prázdný prices.json')">Smazat vše</button>
+    <span class="count" id="priceCount">0 cen</span>
+    <span class="msg" id="priceMsg"></span>
+  </div>
+  <p class="hint">Sloupec A = EAN, B = prodejní cena <strong>netto</strong>. Po importu stáhněte <code>prices.json</code> a nahrajte na GitHub (ghi đè). Feed ceny nepřepisuje.</p>
+</div>
+
+<div class="box">
+  <h2>Akce &amp; štítky · Khuyến mãi &amp; nhãn</h2>
+  <div class="row">
+    <label class="btn">Import akcí (.xlsx / .csv)<input type="file" accept=".xlsx,.csv" style="display:none" onchange="importTags(this)"></label>
+    <select id="tagFilter" onchange="renderTags()">
+      <option value="">Všechny štítky</option>
+      <option value="akce">Akce</option>
+      <option value="sezonni">Sezónní</option>
+      <option value="top">Bestseller</option>
+      <option value="vyprodej">Výprodej</option>
+      <option value="novinka">Novinka</option>
+    </select>
+    <button onclick="downloadJson(tags,'tags.json')">Stáhnout tags.json</button>
+    <button class="danger" onclick="tags={};renderTags();msg('tagMsg','Smazáno — stáhněte a nahrajte prázdný tags.json')">Smazat vše</button>
+    <span class="msg" id="tagMsg"></span>
+  </div>
+  <p class="hint">Sloupec A = EAN, B = štítek (akce / sleva / top / vyprodej), C = akční cena <strong>s DPH</strong> (nepovinné). Po úpravách stáhněte <code>tags.json</code> a nahrajte na GitHub.</p>
+  <div id="tagList"></div>
+</div>
+
+<div class="box">
+  <h2>Nhóm hàng · Skupiny (đổi nhóm trực tiếp từng sản phẩm)</h2>
+  <div class="row">
+    <input type="text" id="grpSearch" style="flex:1;min-width:240px" placeholder="Tìm sản phẩm… (tên, kód, EAN)" oninput="renderGroups()">
+    <select id="grpFilter" onchange="renderGroups()"><option value="">Tất cả nhóm</option></select>
+    <label style="font-size:12px;color:#666;display:inline-flex;align-items:center;gap:5px"><input type="checkbox" id="grpOnlyOver" onchange="renderGroups()">chỉ hiện hàng đã đổi tay</label>
+    <button onclick="downloadJson(groupOver,'groups.json')">Stáhnout groups.json</button>
+    <button class="danger" onclick="groupOver={};renderGroups();msg('grpMsg','Smazáno — stáhněte a nahrajte prázdný groups.json')">Smazat vše</button>
+    <span class="count" id="grpCount"></span>
+    <span class="msg" id="grpMsg"></span>
+  </div>
+  <p class="hint">Nhóm đổi tay được giữ cố định, không bị phân lại tự động. Sau khi đổi → <strong>Stáhnout groups.json</strong> → upload ghi đè <code>groups.json</code> lên GitHub. Các nút tròn là thẻ tag (% Akce · ❄ Sezónní · ★ Bestseller · ⚡ Výprodej · ✦ Novinka) — bấm để gắn/bỏ trực tiếp; đổi tag nhớ <strong>Stáhnout tags.json</strong>.</p>
+  <div id="grpList"></div>
+</div>
+
+<div class="box">
+  <h2>Katalog (databáze produktů)</h2>
+  <div class="row">
+    <label class="btn">Import Excel (mẫu gốc)<input type="file" accept=".xlsx" style="display:none" onchange="importCatalog(this)"></label>
+    <button onclick="downloadJson(catalog,'products.json')">Stáhnout products.json</button>
+    <span class="count" id="catCount">0 položek</span>
+    <span class="msg" id="catMsg"></span>
+  </div>
+  <p class="hint">Thường KHÔNG cần đụng vào — feed voph.cz tự cập nhật hằng đêm. Chỉ dùng khi muốn nạp database từ file Excel gốc (A Zkratka, B EAN, C název, D skupina, E cena netto, F sklad, G balení, H DPH).</p>
+</div>
+
+<script>
+var catalog=[],tags={},prices={},groupOver={},grpPage=0,GRP_PER=300;
+var TAGDEFS={akce:['Akce','#e67e22','%'],sezonni:['Sezónní','#c0392b','❄'],top:['Bestseller','#a4780a','★'],vyprodej:['Výprodej','#8e44ad','⚡'],novinka:['Novinka','#1565c0','✦']};
+// Nhóm hàng = tên nhóm gốc do feed cung cấp (voph: CATEGORYTEXT, levior: cột K) — không đoán theo từ khóa nữa.
+function effGroup(p){return groupOver[p.ean]||p.group||'Ostatní'}
+function allGroups(){var s=new Set();catalog.forEach(function(p){s.add(effGroup(p))});return Array.from(s).sort(function(a,b){return a.localeCompare(b,'cs')})}
+function thumbImg(p){return p&&p.img?'<img class="th" loading="lazy" src="https://wsrv.nl/?url='+encodeURIComponent(p.img)+'&w=72&h=72&fit=inside&output=webp&q=60">':'<span class="noimg"></span>'}
+function msg(id,t,err){var el=document.getElementById(id);el.textContent=t;el.className='msg'+(err?' err':'');}
+function baseUrl(){var u=document.getElementById('siteUrl').value.trim();return u.replace(/\/(index\.html|Objednavka\.dc\.html)?(\?.*)?$/,'')+'/';}
+async function loadAll(){
+  msg('loadMsg','Načítám…');
+  try{
+    var b=baseUrl();
+    var[p,t,c,g]=await Promise.all([
+      fetch(b+'products.json').then(function(r){return r.ok?r.json():[]}).catch(function(){return[]}),
+      fetch(b+'tags.json').then(function(r){return r.ok?r.json():{}}).catch(function(){return{}}),
+      fetch(b+'prices.json').then(function(r){return r.ok?r.json():{}}).catch(function(){return{}}),
+      fetch(b+'groups.json').then(function(r){return r.ok?r.json():{}}).catch(function(){return{}})
+    ]);
+    catalog=Array.isArray(p)?p:[];tags=t&&!Array.isArray(t)?t:{};prices=c&&!Array.isArray(c)?c:{};groupOver=g&&!Array.isArray(g)?g:{};
+    msg('loadMsg','Načteno: '+catalog.length+' produktů, '+Object.keys(tags).length+' štítků, '+Object.keys(prices).length+' cen ✓');
+    renderPrices();renderTags();renderCat();renderGroups();
+  }catch(e){msg('loadMsg','Chyba: '+e.message,1);}
+}
+function byEan(){var m={};catalog.forEach(function(p){m[p.ean]=p});return m;}
+function downloadJson(obj,name){
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,1)],{type:'application/json'}));
+  a.download=name;document.body.appendChild(a);a.click();a.remove();
+}
+async function fileRows(input){
+  var f=input.files&&input.files[0];if(!f)return null;
+  var rows;
+  if(/\.xlsx$/i.test(f.name))rows=await parseXlsxRows(await f.arrayBuffer());
+  else rows=String(await f.text()).replace(/\r/g,'').split('\n').map(function(l){return l.split(/[;,\t]/).map(function(c){return c.replace(/^"|"$/g,'')})});
+  input.value='';return rows;
+}
+async function importPrices(input){
+  try{
+    var rows=await fileRows(input);if(!rows)return;var n=0;
+    rows.forEach(function(r){
+      var ean=String(r[0]||'').replace(/\.0+$/,'').trim();
+      var pr=parseFloat(String(r[1]||'').replace(',','.'));
+      if(/^\d{8,14}$/.test(ean)&&pr>=0){prices[ean]=Math.round(pr*100)/100;n++;}
+    });
+    if(!n)throw new Error('žádné platné řádky (A = EAN, B = cena netto)');
+    renderPrices();msg('priceMsg','Importováno '+n+' cen ✓ — stáhněte prices.json');
+  }catch(e){msg('priceMsg','Chyba: '+e.message,1);}
+}
+function renderPrices(){document.getElementById('priceCount').textContent=Object.keys(prices).length+' cen';}
+async function importTags(input){
+  try{
+    var rows=await fileRows(input);if(!rows)return;var n=0;
+    var norm=function(v){v=String(v||'').toLowerCase();if(v.indexOf('sez')>=0||v.indexOf('slev')>=0||v.indexOf('mùa')>=0||v.indexOf('mua')>=0)return'sezonni';if(v.indexOf('best')>=0||v.indexOf('top')>=0||v.indexOf('chạy')>=0)return'top';if(v.indexOf('prod')>=0||v.indexOf('xả')>=0)return'vyprodej';if(v.indexOf('nov')>=0||v.indexOf('mới')>=0||v.indexOf('moi')>=0)return'novinka';return'akce';};
+    rows.forEach(function(r){
+      var ean=String(r[0]||'').replace(/\.0+$/,'').trim();
+      if(!/^\d{8,14}$/.test(ean))return;
+      tags[ean]={tag:norm(r[1]),price:Math.round((parseFloat(String(r[2]||'').replace(',','.'))||0)*100)/100,on:true};n++;
+    });
+    if(!n)throw new Error('žádné platné řádky (sloupec A musí být EAN)');
+    renderTags();msg('tagMsg','Importováno '+n+' štítků ✓ — stáhněte tags.json');
+  }catch(e){msg('tagMsg','Chyba: '+e.message,1);}
+}
+function renderTags(){
+  var fsel=document.getElementById('tagFilter'),f=fsel.value,m=byEan(),el=document.getElementById('tagList'),names={akce:'Akce',sezonni:'Sezónní',top:'Bestseller',vyprodej:'Výprodej',novinka:'Novinka'};
+  Object.keys(tags).forEach(function(k){if(tags[k]&&tags[k].tag==='sleva')tags[k].tag='sezonni'});
+  el.innerHTML='';
+  var keys=Object.keys(tags).filter(function(k){return!f||tags[k].tag===f});
+  keys.sort(function(a,b){return((m[a]||{}).name||'').localeCompare((m[b]||{}).name||'','cs')});
+  if(!keys.length){el.innerHTML='<p class="hint" style="font-style:italic">Zatím žádné štítky.</p>';return;}
+  keys.forEach(function(ean){
+    var t=tags[ean],p=m[ean],row=document.createElement('div');row.className='trow';
+    var sel='<select onchange="tags[\''+ean+'\'].tag=this.value">'+Object.keys(names).map(function(k){return'<option value="'+k+'"'+(t.tag===k?' selected':'')+'>'+names[k]+'</option>'}).join('')+'</select>';
+    row.innerHTML='<span class="ean">'+ean+'</span>'+thumbImg(p)+
+      '<span class="nm" style="color:'+(p?'#333':'#c0392b')+'">'+(p?p.name.replace(/</g,'&lt;'):'— není v katalogu —')+'</span>'+sel+
+      '<input type="number" min="0" step="0.01" style="width:96px" placeholder="cena s DPH" value="'+(t.price||'')+'" onchange="tags[\''+ean+'\'].price=parseFloat(this.value)||0">'+
+      '<button style="min-width:78px;color:'+(t.on===false?'#c0392b':'#0b7a3e')+'" onclick="tags[\''+ean+'\'].on=(tags[\''+ean+'\'].on===false);renderTags()">'+(t.on===false?'vypnuto ✕':'zapnuto ✓')+'</button>'+
+      '<button class="danger" style="width:34px" onclick="delete tags[\''+ean+'\'];renderTags()">✕</button>';
+    el.appendChild(row);
+  });
+}
+function renderCat(){document.getElementById('catCount').textContent=catalog.length+' položek';}
+function tagBtnsHtml(ean){
+  var t=tags[ean];
+  return'<span style="display:inline-flex;gap:4px;flex:none">'+Object.keys(TAGDEFS).map(function(k){
+    var d=TAGDEFS[k],active=t&&t.tag===k&&t.on!==false;
+    return'<button title="'+d[0]+'" onclick="toggleTag(\''+ean+'\',\''+k+'\')" style="width:30px;height:30px;padding:0;border-radius:6px;font-size:13px;line-height:1;border:1px solid '+(active?d[1]:'#ddd')+';background:'+(active?d[1]:'#fff')+';color:'+(active?'#fff':'#bbb')+'">'+d[2]+'</button>';
+  }).join('')+'</span>';
+}
+function toggleTag(ean,k){
+  var t=tags[ean];
+  if(t&&t.tag===k&&t.on!==false){delete tags[ean];}
+  else tags[ean]={tag:k,price:(t&&t.price)||0,on:true};
+  renderGroups();renderTags();msg('grpMsg','Đã đổi tag — nhớ Stáhnout tags.json → upload GitHub');
+}
+function renderGroups(){
+  var fsel=document.getElementById('grpFilter'),curSel=fsel.value;
+  fsel.innerHTML='<option value="">Tất cả nhóm</option>'+allGroups().map(function(g){return'<option value="'+g+'"'+(g===curSel?' selected':'')+'>'+g+'</option>'}).join('');
+  var q=document.getElementById('grpSearch').value.trim().toLowerCase();
+  var gf=fsel.value,onlyOver=document.getElementById('grpOnlyOver').checked;
+  if(q!==(renderGroups._q||'')||gf!==(renderGroups._gf||'')){grpPage=0}
+  renderGroups._q=q;renderGroups._gf=gf;
+  var el=document.getElementById('grpList');el.innerHTML='';
+  var hits=catalog.filter(function(p){
+    if(onlyOver&&!groupOver[p.ean])return false;
+    if(gf&&effGroup(p)!==gf)return false;
+    if(q&&String(p.name+' '+p.code+' '+p.ean).toLowerCase().indexOf(q)<0)return false;
+    return true;
+  });
+  var pages=Math.max(1,Math.ceil(hits.length/GRP_PER));
+  if(grpPage>=pages)grpPage=pages-1;
+  document.getElementById('grpCount').textContent=hits.length+' sản phẩm · trang '+(grpPage+1)+'/'+pages+(Object.keys(groupOver).length?' · '+Object.keys(groupOver).length+' đã đổi tay':'');
+  hits.slice(grpPage*GRP_PER,(grpPage+1)*GRP_PER).forEach(function(p){
+    var cur=effGroup(p),over=!!groupOver[p.ean];
+    var row=document.createElement('div');row.className='trow';
+    row.innerHTML='<span class="ean">'+p.ean+'</span>'+thumbImg(p)+
+      '<span class="nm">'+String(p.name).replace(/</g,'&lt;')+(over?' <strong style="color:#e67e22;font-size:10.5px">đổi tay</strong>':'')+'</span>'+
+      '<select onchange="setGroup(\''+p.ean+'\',this.value)">'+allGroups().map(function(g){return'<option value="'+g+'"'+(g===cur?' selected':'')+'>'+g+'</option>'}).join('')+'</select>'+tagBtnsHtml(p.ean)+
+      (over?'<button class="danger" style="width:auto" title="trở về tự động" onclick="delete groupOver[\''+p.ean+'\'];renderGroups()">↺ tự động</button>':'');
+    el.appendChild(row);
+  });
+  if(pages>1){
+    var nav=document.createElement('div');
+    nav.style.cssText='display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap';
+    var mkBtn=function(label,dis,fn){var b=document.createElement('button');b.textContent=label;b.disabled=dis;if(dis){b.style.opacity=.4;b.style.cursor='default'}b.onclick=fn;return b};
+    nav.appendChild(mkBtn('← Předchozí',grpPage===0,function(){grpPage--;renderGroups();window.scrollTo(0,document.getElementById('grpList').offsetTop-80)}));
+    var sel=document.createElement('select');
+    for(var i=0;i<pages;i++){var o=document.createElement('option');o.value=i;o.textContent='Trang '+(i+1)+' / '+pages;if(i===grpPage)o.selected=true;sel.appendChild(o)}
+    sel.onchange=function(){grpPage=+this.value;renderGroups();window.scrollTo(0,document.getElementById('grpList').offsetTop-80)};
+    nav.appendChild(sel);
+    nav.appendChild(mkBtn('Další →',grpPage>=pages-1,function(){grpPage++;renderGroups();window.scrollTo(0,document.getElementById('grpList').offsetTop-80)}));
+    el.appendChild(nav);
+  }
+}
+function setGroup(ean,g){
+  var p=catalog.find(function(x){return x.ean===ean});
+  if(p&&(p.group||'Ostatní')===g)delete groupOver[ean];else groupOver[ean]=g;
+  renderGroups();msg('grpMsg','Đã đổi — nhớ Stáhnout groups.json → upload GitHub');
+}
+async function importCatalog(input){
+  try{
+    var f=input.files&&input.files[0];if(!f)return;
+    var out=await parseCatalogXlsx(await f.arrayBuffer());input.value='';
+    catalog=out;renderCat();msg('catMsg','Importováno '+out.length+' položek ✓ — stáhněte products.json');
+  }catch(e){msg('catMsg','Chyba: '+e.message,1);}
+}
+// ---- XLSX parser (inline) ----
+function findFiles(u8){var files=[],dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);for(var p=u8.length-22;p>=0;p--){if(dv.getUint32(p,true)===0x06054b50){var cnt=dv.getUint16(p+10,true),off=dv.getUint32(p+16,true);for(var k=0;k<cnt;k++){if(dv.getUint32(off,true)!==0x02014b50)break;var method=dv.getUint16(off+10,true),csize=dv.getUint32(off+20,true),nlen=dv.getUint16(off+28,true),elen=dv.getUint16(off+30,true),clen=dv.getUint16(off+32,true),lho=dv.getUint32(off+42,true),name=new TextDecoder().decode(u8.slice(off+46,off+46+nlen));files.push({name:name,method:method,csize:csize,lho:lho});off+=46+nlen+elen+clen}break}}return files}
+async function extract(u8,f){var dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength),nlen=dv.getUint16(f.lho+26,true),elen=dv.getUint16(f.lho+28,true),start=f.lho+30+nlen+elen,data=u8.slice(start,start+f.csize);if(f.method===0)return new TextDecoder().decode(data);var ds=new DecompressionStream('deflate-raw');return await new Response(new Blob([data]).stream().pipeThrough(ds)).text()}
+async function sheetCells(ab){
+  var u8=new Uint8Array(ab),files=findFiles(u8);
+  var sheetF=files.find(function(f){return /worksheets\/sheet1\.xml$/.test(f.name)})||files.find(function(f){return /worksheets\//.test(f.name)});
+  if(!sheetF)throw new Error('Soubor není platný XLSX');
+  var shared=[],sharedF=files.find(function(f){return f.name.indexOf('sharedStrings')>=0});
+  if(sharedF){var sx=await extract(u8,sharedF),m=sx.match(/<si>[\s\S]*?<\/si>/g)||[];m.forEach(function(si){var ts=si.match(/<t[^>]*>([\s\S]*?)<\/t>/g)||[];shared.push(ts.map(function(t){return t.replace(/<[^>]+>/g,'')}).join(''))})}
+  var xml=await extract(u8,sheetF),rows=xml.match(/<row[^>]*>[\s\S]*?<\/row>/g)||[];
+  function dec(s){return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")}
+  return rows.map(function(row){
+    var cells={},cs=row.match(/<c [^>]*(?:\/>|>[\s\S]*?<\/c>)/g)||[];
+    cs.forEach(function(c){var ref=(c.match(/r="([A-Z]+)\d+"/)||[])[1];if(!ref)return;var t=(c.match(/t="([^"]+)"/)||[])[1];var v=(c.match(/<v>([\s\S]*?)<\/v>/)||[])[1];if(t==='s')v=shared[+v];if(t==='inlineStr')v=(c.match(/<t[^>]*>([\s\S]*?)<\/t>/)||[])[1];if(v!=null)cells[ref]=dec(String(v))});
+    return cells;
+  });
+}
+async function parseXlsxRows(ab){
+  var rows=await sheetCells(ab);
+  var colIdx=function(ref){var n=0;for(var i=0;i<ref.length;i++)n=n*26+(ref.charCodeAt(i)-64);return n-1};
+  return rows.map(function(cells){var arr=[];Object.keys(cells).forEach(function(ref){arr[colIdx(ref)]=cells[ref]});return arr});
+}
+async function parseCatalogXlsx(ab){
+  var rows=await sheetCells(ab),out=[];
+  for(var i=1;i<rows.length;i++){
+    var c=rows[i];if(!c.B||!c.C)continue;
+    out.push({code:c.A||'',ean:String(c.B).replace(/\.0+$/,''),name:c.C,group:c.D||'Ostatní',price:Math.round(parseFloat(c.E||'0')*100)/100,stock:parseInt(c.F||'0',10)||0,pack:parseInt(c.G||'1',10)||1,dph:c.H||'ZS'});
+  }
+  if(!out.length)throw new Error('V souboru nebyly nalezeny žádné položky');
+  return out;
+}
+loadAll();
+</script>
+</div>
+</body>
+</html>
