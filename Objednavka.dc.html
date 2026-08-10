@@ -572,7 +572,11 @@ class Component extends DCLogic {
     const filtered = this.state.custTag ? filtered1.filter(p => p._tag === this.state.custTag) : filtered1;
     const byGroup = {};
     filtered.forEach(p => { (byGroup[p.group] = byGroup[p.group] || []).push(p); });
-    const sortFn = { name: (a, b) => a.name.localeCompare(b.name, 'cs'), priceAsc: (a, b) => a.price - b.price, priceDesc: (a, b) => b.price - a.price }[this.state.sort];
+    const sortFn = {
+      // Mặc định: hàng Levior xếp theo mã hàng nhà sản xuất (cột A) tăng dần; hàng khác vẫn theo tên A-Z.
+      name: (a, b) => (a.mfgCode && b.mfgCode) ? ((parseFloat(a.mfgCode) - parseFloat(b.mfgCode)) || String(a.mfgCode).localeCompare(String(b.mfgCode))) : a.name.localeCompare(b.name, 'cs'),
+      priceAsc: (a, b) => a.price - b.price, priceDesc: (a, b) => b.price - a.price
+    }[this.state.sort];
     if (sortFn) Object.values(byGroup).forEach(arr => arr.sort(sortFn));
     let totalVat = 0, pieceCount = 0;
     all.forEach(p => { const q = this.state.qty[p.ean] || 0; totalVat += q * p.price * VAT; pieceCount += q; });
