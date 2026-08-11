@@ -110,7 +110,7 @@ for (let i = 1; i < rows.length; i++) {
     code: r.D || r.A || '',
     ean: String(ean).replace(/\.0+$/, ''),
     name,
-    group: r.K || 'Ostatní',
+    group: r.K || 'ostatni',
     price,
     stock: n,
     pack: parseInt(r.F || '1', 10) || 1,

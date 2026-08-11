@@ -19,6 +19,29 @@ const tag = (s, n) => {
   return m ? m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim() : '';
 };
 
+// Sản phẩm voph.cz không có cột nhóm hàng của Levior — xếp vào đúng 1 trong các nhóm gốc
+// của Levior (cột K file "levior all") bằng cách tham khảo từ khóa trong tên, không tự đặt nhóm mới.
+const norm = (s) => s.toLowerCase()
+  .replace(/[áàâã]/g, 'a').replace(/[éèêě]/g, 'e').replace(/[íìî]/g, 'i').replace(/[óòôõ]/g, 'o')
+  .replace(/[úùûů]/g, 'u').replace(/[ýÿ]/g, 'y').replace(/č/g, 'c').replace(/ď/g, 'd').replace(/ň/g, 'n')
+  .replace(/ř/g, 'r').replace(/š/g, 's').replace(/ť/g, 't').replace(/ž/g, 'z');
+const GROUP_KEYWORDS = [
+  ['AKU NÁŘADÍ', [/\baku\b.{0,15}(vrtac|sroubov|pila|bruska|sekack|naradi|kladivo)/, /(vrtac|sroubov|pila|bruska|sekack|naradi|kladivo).{0,15}\baku\b/]],
+  ['Automotive', [/\bauto(diln|doplnk|baterie|zarovk)/, /zvedak/, /\bpneu\b/, /prevodovk/, /motorov(y|eho) olej/, /naviják|navijak/]],
+  ['Měřidla a značkovače', [/svinovac.{0,3}metr|\bpasmo\b/, /posuvn.{0,3}meridlo|mikrometr/, /vodovah/, /uhelnik|uhlomer/, /\blaser|dalkomer/, /znackovac|popisovac|rysovac/]],
+  ['ELEKTRICKÉ NÁŘADÍ, SVĚTLA, KABELY', [/vrtac(ka|ky)|bruska|okruzn.{0,3}pila|svarec|pajk|vysav|tavn.{0,3}pistol|kompresor|tlakov.{0,3}cistic|cerpadl|svitiln|reflektor|\bled\b.{0,3}(svetl|zarovk)|topidl|prodluzovac.{0,3}kabel|kabelov.{0,3}buben/]],
+  ['Zahradní nářadí', [/zahradn|sekack|zavlazovac|postrikovac|macet|kerov.{0,3}nuzky|sit.{0,3}proti hmyzu/]],
+  ['Železářské zboží', [/visaci zamek|\bzamek\b|trezor|schranka na klic|karabin|retez|napinaci.{0,3}drat|vazaci.{0,3}drat|zavitov.{0,3}tyc/]],
+  ['Stavební nářadí', [/zednick|hladitk|leseni|zebrik|schudk|dlazb|oblkad|malirsk|sadrokarton|pu pen|vytlacovac.{0,3}pistol/]],
+  ['Nástroje', [/vrtak|freza|pilnik|brusny kotouc|pilovy kotouc|rezacka.{0,3}trub|zavitnik/]],
+  ['Dílenské nářadí', [/kleste|sroubovak|kladivo|palice|sverak|sponkovac/]],
+];
+function classifyGroup(name) {
+  const n = norm(name);
+  for (const [group, patterns] of GROUP_KEYWORDS) if (patterns.some((re) => re.test(n))) return group;
+  return 'ostatni';
+}
+
 const [feedXml, availXml] = await Promise.all([get(FEED), get(AVAIL).catch(() => '')]);
 // Prodejní ceny se z feedu NEberou — zachováme stávající ceny z products.json (import ceny dělá admin přes prices.json).
 let oldPrices = {};
@@ -37,7 +60,7 @@ const prods = items.map((s) => {
   const ean = tag(s, 'EAN');
   return {
     code, ean, name,
-    group: parts[parts.length - 1] || 'Ostatní',
+    group: classifyGroup(name),
     cat: parts.join(' | '),
     price: oldPrices[ean] != null ? oldPrices[ean] : Math.round((pv / (1 + vat / 100)) * 100) / 100,
     stock: stock[code] || 0, pack: 1, dph: 'ZS',
