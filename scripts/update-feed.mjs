@@ -73,6 +73,13 @@ const prods = items.map((s) => {
 if (prods.length < 10) throw new Error('Feed chỉ có ' + prods.length + ' sản phẩm — không ghi đè products.json (có thể feed lỗi).');
 // Giữ nguyên các mặt hàng đến từ nguồn khác (vd. Levior) — chỉ thay thế phần voph.cz.
 const kept = oldProducts.filter((p) => p.src && p.src !== 'voph');
-const merged = prods.concat(kept.filter((p) => !prods.some((np) => np.ean === p.ean)));
+// Hàng DF PARTNER không có feed tồn kho riêng — dispozice lấy theo EAN trùng từ feed voph.cz (nếu có).
+const eanStock = {};
+for (const p of prods) eanStock[p.ean] = p.stock;
+const keptAdj = kept.filter((p) => !prods.some((np) => np.ean === p.ean)).map((p) => {
+  if (p.src === 'dfpartner' && eanStock[p.ean] != null) return Object.assign({}, p, { stock: eanStock[p.ean] });
+  return p;
+});
+const merged = prods.concat(keptAdj);
 writeFileSync(new URL('../products.json', import.meta.url), JSON.stringify(merged));
 console.log('OK — ' + prods.length + ' sản phẩm voph.cz (+ ' + (merged.length - prods.length) + ' giữ nguyên từ nguồn khác), ' + Object.keys(stock).length + ' mục tồn kho.');
