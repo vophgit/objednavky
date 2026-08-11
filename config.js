@@ -7,7 +7,7 @@ window.CONFIG = {
   // Tự tải feed khi mở trang (khách luôn thấy dữ liệu mới)
   feedAutoDefault: true,
   // Email nhận đơn hàng
-  orderEmail: "info@voph.cz",
+  orderEmail: "nam@voph.cz",
   // Đơn tối thiểu (Kč s DPH)
   minOrder: 5000,
   // Tăng tốc ảnh: nén + resize ảnh qua CDN wsrv.nl (miễn phí). false = tải ảnh gốc trực tiếp từ voph.cz
