@@ -128,6 +128,9 @@ input[type=number]{-moz-appearance:textfield}
                 <span style="font-size:18px;font-weight:700;color:{{ item.priceColor }}">{{ item.priceVatDisplay }} <span style="font-size:11px;font-weight:600">Kč s DPH</span></span>
               </span>
             </div>
+            <sc-if value="{{ item.hasPack }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12px;font-weight:700;color:#333;text-align:right">balení {{ item.pack }} ks</div>
+            </sc-if>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
               <span style="font-size:11px;color:{{ item.stockColor }}">● {{ item.stockLabel }}</span>
               <div style="display:flex;align-items:center;gap:6px">
@@ -610,7 +613,8 @@ class Component extends DCLogic {
           cardBorder: q ? '#F16726' : '#e3e1db',
           inputBorder: q ? '#F16726' : '#d48db4',
           stockColor: p.stock > 0 ? '#0b7a3e' : '#c0392b',
-          stockLabel: p.stock > 0 ? 'skladem' : 'na dotaz',
+          stockLabel: p.stock > 0 ? 'skladem' : '7-14 ngày',
+          pack: p.pack || 1, hasPack: (p.pack || 1) > 1,
           inc: () => this.setQty(p.ean, q + 1),
           dec: () => this.setQty(p.ean, q - 1),
           onInput: (e) => this.setQty(p.ean, parseInt(e.target.value, 10)),
