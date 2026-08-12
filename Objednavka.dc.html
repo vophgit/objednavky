@@ -129,7 +129,7 @@ input[type=number]{-moz-appearance:textfield}
               </span>
             </div>
             <sc-if value="{{ item.hasPack }}" hint-placeholder-val="{{ false }}">
-              <div style="font-size:12px;font-weight:700;color:#333;text-align:right">balení {{ item.pack }} ks</div>
+              <div style="font-size:12px;font-weight:700;color:#333;text-align:right">{{ item.packLabel }}</div>
             </sc-if>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
               <span style="font-size:11px;color:{{ item.stockColor }}">● {{ item.stockLabel }}</span>
@@ -257,7 +257,7 @@ input[type=number]{-moz-appearance:textfield}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;orderEmail&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;nam@voph.cz&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;minOrder&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:15000,&quot;min&quot;:0,&quot;max&quot;:50000,&quot;unit&quot;:&quot;Kč&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;vatPercent&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:21,&quot;min&quot;:0,&quot;max&quot;:30,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;}}">
 class Component extends DCLogic {
-  state = { qty: {}, qtyOrder: [], filter: '', ico: '', adresa: '', telefon: '', email: '', poznamka: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: 'name', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', baseGroups: {}, groupOrder: [], scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false, sending: false };
+  state = { qty: {}, qtyOrder: [], filter: '', ico: '', adresa: '', telefon: '', email: '', poznamka: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: 'name', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', baseGroups: {}, groupOrder: [], basePacks: {}, scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false, sending: false };
   fmt(n) { return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   componentDidMount() {
     Promise.all([
@@ -265,7 +265,8 @@ class Component extends DCLogic {
       fetch('./tags.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('./prices.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('./groups.json').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([cat, tg, pr, gr]) => {
+      fetch('./packs.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([cat, tg, pr, gr, pk]) => {
       // 1 setState duy nhất thay vì 4 — tránh 4 lần tính lại toàn bộ catalog lớn khi từng fetch về rời rạc.
       const patch = {};
       if (Array.isArray(cat)) patch.baseCatalog = cat;
@@ -284,6 +285,20 @@ class Component extends DCLogic {
         }
         patch.baseGroups = flat;
         if (Array.isArray(gr._order)) patch.groupOrder = gr._order;
+      }
+      // packs.json v1: { items: { EAN: [počet ks v balení, jednotka] } } — zdroj "data k2.xlsx",
+      // má vždy přednost před hodnotou z feedu dodavatele.
+      if (pk && typeof pk === 'object' && !Array.isArray(pk)) {
+        const src = (pk.items && typeof pk.items === 'object') ? pk.items : pk;
+        const bp = {};
+        for (const k of Object.keys(src)) {
+          if (k.charAt(0) === '_') continue;
+          const v = src[k];
+          const n = parseInt(Array.isArray(v) ? v[0] : v, 10);
+          const u = Array.isArray(v) ? (v[1] || 'ks') : 'ks';
+          if (n > 0) bp[k] = [n, u];
+        }
+        patch.basePacks = bp;
       }
       this.setState(patch);
     });
@@ -480,15 +495,22 @@ class Component extends DCLogic {
     e.target.value = '';
   }
   decorated(VAT) {
-    const tags = this.effTags(), defs = this.tagDefs(), prices = this.effPrices();
-    const gOver = this.state.baseGroups || {};
+    const s = this.state;
+    const gOver = s.baseGroups || {}, packs = s.basePacks || {};
     const catalog = this.catalogAll();
-    // Cache: gói hàng 6000+ mặt hàng nên chỉ tính lại khi catalog/nhãn/giá/nhóm thực sự đổi, không phải mỗi lần gõ tìm kiếm.
+    // Cache: gói hàng 6000+ mặt hàng nên chỉ tính lại khi dữ liệu nguồn thực sự đổi, không phải mỗi lần gõ tìm kiếm.
+    // So sánh trực tiếp các object trong state — effTags()/effPrices() tạo object MỚI mỗi lần gọi nên không dùng làm khoá cache được.
     const c = this._decoCache;
-    if (c && c.catalog === catalog && c.tags === tags && c.prices === prices && c.gOver === gOver && c.VAT === VAT) return c.result;
+    if (c && c.catalog === catalog && c.baseTags === s.baseTags && c.tags === s.tags
+        && c.basePrices === s.basePrices && c.prices === s.prices
+        && c.gOver === gOver && c.packs === packs && c.VAT === VAT) return c.result;
+    const tags = this.effTags(), defs = this.tagDefs(), prices = this.effPrices();
     const result = catalog.map(p => {
       let g = gOver[p.ean] || p.group;
       if (g && p.group !== g) p = Object.assign({}, p, { group: g });
+      // packs.json (data k2) có quyền cao nhất, kể cả khi ghi 1 ks — feed dodavatele hay ghi số lượng cả thùng.
+      const pk = packs[p.ean];
+      if (pk) p = Object.assign({}, p, { pack: pk[0], unit: pk[1] });
       if (prices[p.ean] != null) { p = Object.assign({}, p, { price: prices[p.ean] }); p._sk = this.searchKey(p); }
       const t = tags[p.ean];
       if (!t || t.on === false || !defs[t.tag]) return p;
@@ -496,7 +518,8 @@ class Component extends DCLogic {
       if (+t.price > 0) { d._origVat = p.price * VAT; d.price = Math.round(+t.price / VAT * 100) / 100; }
       return d;
     });
-    this._decoCache = { catalog, tags, prices, gOver, VAT, result };
+    this._decoCache = { catalog, baseTags: s.baseTags, tags: s.tags, basePrices: s.basePrices,
+                        prices: s.prices, gOver, packs, VAT, result };
     return result;
   }
   async importTags(e) {
@@ -629,7 +652,10 @@ class Component extends DCLogic {
           inputBorder: q ? '#F16726' : '#d48db4',
           stockColor: p.stock > 0 ? '#0b7a3e' : '#c0392b',
           stockLabel: p.stock > 0 ? 'skladem' : '7-14 ngày',
-          pack: p.pack || 1, hasPack: (p.pack || 1) > 1,
+          pack: p.pack || 1, hasPack: (p.pack || 1) > 1 || (p.unit && p.unit.toLowerCase() !== 'ks'),
+          packLabel: (p.pack || 1) > 1
+            ? 'balení ' + (p.pack || 1) + ' ' + (p.unit || 'ks')
+            : 'jednotka: ' + (p.unit || 'ks'),
           inc: () => this.setQty(p.ean, q + 1),
           dec: () => this.setQty(p.ean, q - 1),
           onInput: (e) => this.setQty(p.ean, parseInt(e.target.value, 10)),
