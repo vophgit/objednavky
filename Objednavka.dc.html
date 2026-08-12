@@ -257,7 +257,7 @@ input[type=number]{-moz-appearance:textfield}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;orderEmail&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;nam@voph.cz&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;minOrder&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:15000,&quot;min&quot;:0,&quot;max&quot;:50000,&quot;unit&quot;:&quot;Kč&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;vatPercent&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:21,&quot;min&quot;:0,&quot;max&quot;:30,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;}}">
 class Component extends DCLogic {
-  state = { qty: {}, qtyOrder: [], filter: '', ico: '', adresa: '', telefon: '', email: '', poznamka: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: 'name', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', baseGroups: {}, scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false, sending: false };
+  state = { qty: {}, qtyOrder: [], filter: '', ico: '', adresa: '', telefon: '', email: '', poznamka: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: 'name', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', baseGroups: {}, groupOrder: [], scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false, sending: false };
   fmt(n) { return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   componentDidMount() {
     Promise.all([
@@ -271,7 +271,20 @@ class Component extends DCLogic {
       if (Array.isArray(cat)) patch.baseCatalog = cat;
       if (tg && typeof tg === 'object' && !Array.isArray(tg)) patch.baseTags = tg;
       if (pr && typeof pr === 'object' && !Array.isArray(pr)) patch.basePrices = pr;
-      if (gr && typeof gr === 'object' && !Array.isArray(gr)) patch.baseGroups = gr;
+      // groups.json v2: { _order: [nhóm cấp 1 theo thứ tự hiển thị], items: { EAN: [cấp1, cấp2] } }
+      // Vẫn đọc được format cũ (phẳng { EAN: "tên nhóm" }). Web chỉ dùng cấp 1; cấp 2 lưu trong file để dùng sau.
+      if (gr && typeof gr === 'object' && !Array.isArray(gr)) {
+        const src = (gr.items && typeof gr.items === 'object') ? gr.items : gr;
+        const flat = {};
+        for (const k of Object.keys(src)) {
+          if (k.charAt(0) === '_') continue;
+          const v = src[k];
+          const g = Array.isArray(v) ? v[0] : v;
+          if (g) flat[k] = g;
+        }
+        patch.baseGroups = flat;
+        if (Array.isArray(gr._order)) patch.groupOrder = gr._order;
+      }
       this.setState(patch);
     });
     try {
@@ -589,10 +602,12 @@ class Component extends DCLogic {
     if (sortFn) Object.values(byGroup).forEach(arr => arr.sort(sortFn));
     let totalVat = 0, pieceCount = 0;
     all.forEach(p => { const q = this.state.qty[p.ean] || 0; totalVat += q * p.price * VAT; pieceCount += q; });
-    const g7order = window.GROUPS7 || [];
+    // Thứ tự nhóm trên web: lấy từ groups.json (_order), fallback về window.GROUPS7 như trước.
+    const g7order = (this.state.groupOrder && this.state.groupOrder.length) ? this.state.groupOrder : (window.GROUPS7 || []);
     const groups = Object.keys(byGroup).sort((a, b) => {
       const ia = g7order.indexOf(a), ib = g7order.indexOf(b);
-      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, 'cs');
+      const last = g7order.length;
+      return (ia < 0 ? last : ia) - (ib < 0 ? last : ib) || a.localeCompare(b, 'cs');
     }).map(name => {
       const limit = f ? 200 : (this.state.shown[name] || 30);
       const total = byGroup[name].length;
