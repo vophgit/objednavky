@@ -73,7 +73,7 @@ input[type=number]{-moz-appearance:textfield}
     <select value="{{ groupSel }}" onChange="{{ onGroupSel }}" style="padding:10px 12px;font-size:14px;border:1px solid #ccc;border-radius:8px;background:#fff;outline:none;max-width:100%;cursor:pointer">
       <option value="">Všechny skupiny / Tất cả nhóm</option>
       <sc-for list="{{ groupOptions }}" as="g" hint-placeholder-count="0">
-        <option value="{{ g }}">{{ g }}</option>
+        <option value="{{ g.v }}">{{ g.label }}</option>
       </sc-for>
     </select>
     <select value="{{ sort }}" onChange="{{ onSort }}" style="padding:10px 12px;font-size:14px;border:1px solid #ccc;border-radius:8px;background:#fff;outline:none;cursor:pointer">
@@ -95,7 +95,7 @@ input[type=number]{-moz-appearance:textfield}
 
   <sc-for list="{{ groups }}" as="grp" hint-placeholder-count="1">
     <div key="{{ grp.name }}" style="margin-bottom:30px">
-      <h2 style="margin:0 0 12px;font-size:17px;padding:8px 12px;background:#e4e2dc;border-radius:6px;display:flex;justify-content:space-between;align-items:baseline"><span>{{ grp.name }}</span><span style="font-size:12px;font-weight:400;color:#666">{{ grp.count }} položek</span></h2>
+      <h2 style="margin:0 0 12px;font-size:17px;padding:8px 12px;background:#e4e2dc;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="line-height:1.3">{{ grp.name }}<br /><span style="font-size:12.5px;font-weight:400;color:#8a7f6a;font-style:italic">{{ grp.nameVi }}</span></span><span style="font-size:12px;font-weight:400;color:#666;flex:none">{{ grp.count }} položek</span></h2>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
         <sc-for list="{{ grp.items }}" as="item" hint-placeholder-count="6">
           <div key="{{ item.ean }}" style="background:{{ item.cardBg }};border:2px solid {{ item.cardBorder }};border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;position:relative;content-visibility:auto;contain-intrinsic-size:0 300px">
@@ -257,7 +257,7 @@ input[type=number]{-moz-appearance:textfield}
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;orderEmail&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;nam@voph.cz&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;minOrder&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:15000,&quot;min&quot;:0,&quot;max&quot;:50000,&quot;unit&quot;:&quot;Kč&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;},&quot;vatPercent&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:21,&quot;min&quot;:0,&quot;max&quot;:30,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Objednávka&quot;}}">
 class Component extends DCLogic {
-  state = { qty: {}, qtyOrder: [], filter: '', ico: '', adresa: '', telefon: '', email: '', poznamka: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: 'name', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', baseGroups: {}, groupOrder: [], basePacks: {}, scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false, sending: false };
+  state = { qty: {}, qtyOrder: [], filter: '', ico: '', adresa: '', telefon: '', email: '', poznamka: '', aresStatus: '', aresName: '', tried: false, sent: false, sentFile: '', sendError: '', sentTitle: '', sentMsg: '', sentMsgVi: '', catalog: null, baseCatalog: null, importMsg: '', feedUrl: '', feedAuto: false, shown: {}, baseTags: {}, tags: {}, tagMsg: '', tagFilter: '', sort: 'name', groupSel: '', custTag: '', basePrices: {}, prices: {}, priceMsg: '', baseGroups: {}, groupOrder: [], groupVi: {}, basePacks: {}, scanOpen: false, scanErr: '', headerH: 72, orderOpen: false, adminMode: false, sending: false };
   fmt(n) { return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   componentDidMount() {
     Promise.all([
@@ -285,6 +285,8 @@ class Component extends DCLogic {
         }
         patch.baseGroups = flat;
         if (Array.isArray(gr._order)) patch.groupOrder = gr._order;
+        // _vi: tên tiếng Việt của nhóm (cả cấp 1 lẫn cấp 2) — web chỉ hiện của cấp 1.
+        if (gr._vi && typeof gr._vi === 'object') patch.groupVi = gr._vi;
       }
       // packs.json v1: { items: { EAN: [počet ks v balení, jednotka] } } — zdroj "data k2.xlsx",
       // má vždy přednost před hodnotou z feedu dodavatele.
@@ -635,7 +637,7 @@ class Component extends DCLogic {
       const limit = f ? 200 : (this.state.shown[name] || 30);
       const total = byGroup[name].length;
       return {
-      name, count: total,
+      name, nameVi: (this.state.groupVi || {})[name] || '', count: total,
       hasMore: total > limit,
       allShown: !!this.state.shown[name] && total <= limit,
       moreCount: Math.min(120, total - limit),
@@ -667,7 +669,9 @@ class Component extends DCLogic {
       })
     };});
     const groupSet = new Set(all.map(p => p.group));
-    const groupOptions = [...g7order.filter(g => groupSet.has(g)), ...[...groupSet].filter(g => !g7order.includes(g)).sort((a, b) => a.localeCompare(b, 'cs'))];
+    const gvi = this.state.groupVi || {};
+    const groupOptions = [...g7order.filter(g => groupSet.has(g)), ...[...groupSet].filter(g => !g7order.includes(g)).sort((a, b) => a.localeCompare(b, 'cs'))]
+      .map(g => ({ v: g, label: gvi[g] ? g + ' / ' + gvi[g] : g }));
     const byEan = {}; all.forEach(p => { byEan[p.ean] = p; });
     const effT = this.effTags();
     const tagRows = Object.entries(effT)
