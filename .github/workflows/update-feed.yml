@@ -1,11 +1,12 @@
-# Tự động tải feed voph.cz + Levior mỗi đêm và cập nhật products.json
+# Cập nhật hằng ngày từ feed voph.cz: 4:15 giá bán, 4:25 tồn kho (giờ Séc).
+# Danh mục hàng KHÔNG dựng lại ở đây — chạy tay scripts/build-catalog.mjs khi có cenik mới.
 name: Aktualizace feedu
 on:
   schedule:
-    - cron: '15 0 * * *' # 2:15 giờ Séc (CEST) — Levior (đọc file đã commit trong repo)
-    - cron: '15 1 * * *' # 2:15 giờ Séc (CET)
-    - cron: '30 0 * * *' # 2:30 giờ Séc (CEST) — voph.cz
-    - cron: '30 1 * * *' # 2:30 giờ Séc (CET)
+    - cron: '15 2 * * *' # 4:15 giờ Séc (CEST, mùa hè) — GIÁ BÁN
+    - cron: '15 3 * * *' # 4:15 giờ Séc (CET,  mùa đông)
+    - cron: '25 2 * * *' # 4:25 giờ Séc (CEST) — TỒN KHO
+    - cron: '25 3 * * *' # 4:25 giờ Séc (CET)
   workflow_dispatch: {} # cho phép bấm "Run workflow" bằng tay
 permissions:
   contents: write
@@ -17,14 +18,21 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 20
-      - name: Levior feed (soubor v repu)
-        run: node scripts/update-levior-feed.mjs
-      - name: Tải feed voph.cz
-        run: node scripts/update-feed.mjs
+
+      # 4:15 — giá bán netto. Mặt hàng ngoài feed giữ nguyên giá cũ.
+      - name: Prodejní ceny (4:15)
+        if: github.event.schedule == '15 2 * * *' || github.event.schedule == '15 3 * * *' || github.event_name == 'workflow_dispatch'
+        run: node scripts/update-prices.mjs
+
+      # 4:25 — tồn kho. Mặt hàng ngoài feed đặt về 0.
+      - name: Dispozice (4:25)
+        if: github.event.schedule == '25 2 * * *' || github.event.schedule == '25 3 * * *' || github.event_name == 'workflow_dispatch'
+        run: node scripts/update-stock.mjs
+
       - name: Commit nếu có thay đổi
         run: |
           git config user.name "feed-bot"
           git config user.email "actions@users.noreply.github.com"
           git add products.json
-          git diff --cached --quiet || git commit -m "Aktualizace feedu $(date -u +'%Y-%m-%d')"
+          git diff --cached --quiet || git commit -m "Aktualizace feedu $(date -u +'%Y-%m-%d %H:%M')"
           git push
