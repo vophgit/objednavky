@@ -1,0 +1,8 @@
+{
+ "_note": "Mặt hàng KHÔNG bán trên web. scripts/build-catalog.mjs bỏ qua chúng kể cả khi có trong ceník. Sửa file này rồi chạy lại build-catalog để áp dụng.",
+ "_note_cz": "Položky, které se na webu neprodávají. build-catalog.mjs je vynechá i když jsou v ceníku.",
+ "eanPrefix": [
+  "8591022"
+ ],
+ "ean": []
+}

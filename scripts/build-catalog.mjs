@@ -111,6 +111,12 @@ for (const F of FEEDS) {
 const readJson = (n) => { try { return JSON.parse(readFileSync(new URL(n, ROOT), 'utf8')); } catch (e) { return null; } };
 const groups = readJson('groups.json') || { items: {}, _order: [] };
 const gItems = groups.items || {};
+// exclude.json: mặt hàng không bán trên web — bỏ qua kể cả khi có trong ceník
+const excl = readJson('exclude.json') || {};
+const exPrefix = Array.isArray(excl.eanPrefix) ? excl.eanPrefix.filter(Boolean) : [];
+const exExact = new Set(Array.isArray(excl.ean) ? excl.ean.map(String) : []);
+const isExcluded = (ean) => exExact.has(ean) || exPrefix.some((p) => ean.startsWith(p));
+
 const oldProducts = readJson('products.json') || [];
 const oldByEan = {};
 for (const p of oldProducts) oldByEan[String(p.ean)] = p;
@@ -128,7 +134,7 @@ if (!cenFile) { console.error('KHÔNG thấy ' + CENIK[0] + ' — dừng, giữ 
 const rows = sheetRows(readFileSync(cenFile));
 
 const out = [];
-const stat = { skip: 0, packFeed: 0, packOne: 0, imgOld: 0, imgFeed: 0, imgNone: 0,
+const stat = { skip: 0, excluded: 0, packFeed: 0, packOne: 0, imgOld: 0, imgFeed: 0, imgNone: 0,
                grpOld: 0, grpGuess: 0, mfgAppended: 0 };
 const seen = new Set();
 for (let i = 1; i < rows.length; i++) {
@@ -137,6 +143,7 @@ for (let i = 1; i < rows.length; i++) {
   const name0 = String(r.C || '').trim();
   const price = Math.round(parseFloat(String(r.D || '0').replace(',', '.')) * 100) / 100;
   if (!/^\d{6,14}$/.test(ean) || !name0 || !(price > 0) || seen.has(ean)) { stat.skip++; continue; }
+  if (isExcluded(ean)) { stat.excluded++; seen.add(ean); continue; }
   seen.add(ean);
 
   const mfg = String(r.F || '').trim();
@@ -169,8 +176,8 @@ for (let i = 1; i < rows.length; i++) {
   });
 }
 
-// hàng đang bán mà cenik không có -> GIỮ LẠI
-const kept = oldProducts.filter((p) => !seen.has(String(p.ean)));
+// hàng đang bán mà cenik không có -> GIỮ LẠI (trừ hàng trong exclude.json)
+const kept = oldProducts.filter((p) => !seen.has(String(p.ean)) && !isExcluded(String(p.ean)));
 for (const p of kept) if (!gItems[String(p.ean)] && p.group) gItems[String(p.ean)] = [p.group, ''];
 const merged = out.concat(kept);
 
@@ -181,6 +188,7 @@ writeFileSync(new URL('groups.json', ROOT), JSON.stringify(groups));
 
 console.log(`feed đọc được          : ${feedFiles} file`);
 console.log(`cenik -> mặt hàng      : ${out.length}  (bỏ ${stat.skip} dòng thiếu EAN/tên/giá hoặc trùng)`);
+console.log(`  loại theo exclude.json : ${stat.excluded}`);
 console.log(`  nối mã NSX vào tên   : ${stat.mfgAppended}`);
 console.log(`  pack lấy từ feed     : ${stat.packFeed}   | đặt = 1: ${stat.packOne}`);
 console.log(`  ảnh giữ từ bản cũ    : ${stat.imgOld} | lấy từ feed: ${stat.imgFeed} | không có ảnh: ${stat.imgNone}`);
