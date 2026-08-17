@@ -141,7 +141,7 @@ var STEMS = [
  // ===== dụng cụ cầm tay =====
  ['kleště|kleštin', 'kìm'], ['šroubovák|šroubovák', 'tua vít'], ['šroubovac', 'vặn vít'],
  ['kladiv', 'búa'], ['palic|perlík', 'búa tạ'], ['sekáč', 'đục'], ['dláto|dlát', 'đục gỗ'],
- ['pilník|pilníc', 'giũa'], ['rašpl', 'giũa thô'], ['pilk', 'cưa nhỏ'], ['pil(a|y|ou|e)', 'cưa'],
+ ['pilník|pilníc', 'giũa'], ['rašpl', 'giũa thô'], ['pilk', 'cưa nhỏ'], ['pil(a|y|u|ou|e|e)', 'cưa'],
  ['svěrák', 'ê tô'], ['svěrk|svork|ztužidl', 'kẹp'], ['páčidl', 'xà beng'],
  ['nůžk|nožic', 'kéo'], ['nůž|nože|nožů', 'dao'], ['čepel', 'lưỡi dao'],
  ['sponkovač', 'máy bắn ghim'], ['nýtovač', 'kìm rivê'], ['nýt', 'đinh rivê'],
@@ -155,7 +155,7 @@ var STEMS = [
  ['brusiv|brusn', 'nhám'], ['brousek|brousk', 'đá mài tay'], ['zrnitost|hrubost', 'độ hạt'],
  ['kartáč', 'bàn chải'], ['bit(y|ů|u)?', 'đầu vít'], ['nástavec|nástavc', 'đầu nối dài'],
  ['adaptér|adaptor', 'đầu chuyển'], ['sklíčidl', 'đầu kẹp mũi khoan'],
- ['hlavic', 'đầu'], ['stopk', 'chuôi'], ['plátek|plátk', 'lưỡi'],
+ ['hlavic', 'đầu'], ['stopk|stopc', 'chuôi'], ['plátek|plátk', 'lưỡi'],
  ['leštic|lešt', 'đánh bóng'], ['tělísk', 'đầu mài nhỏ'],
  // ===== máy móc =====
  ['bruska|brusk', 'máy mài'], ['vrtačk', 'máy khoan'], ['bourac|bourák', 'máy đục phá'],
@@ -200,13 +200,13 @@ var STEMS = [
  ['šroub', 'bu lông'], ['vrut', 'vít gỗ'], ['samořez', 'vít tự khoan'],
  ['matic', 'đai ốc'], ['podložk', 'long đen'], ['hmoždink', 'tắc kê'],
  ['kotv', 'bu lông neo'], ['závit', 'ren'], ['závlačk', 'chốt chẻ'],
- ['řetěz', 'xích'], ['lan(o|a|ka|ko)', 'dây cáp'], ['popruh|pás(ek|ku)', 'dây đai'],
+ ['řetěz', 'xích'], ['lan(o|a|ka|ko)', 'dây cáp'], ['popruh|pás(ek|ku|em|u)?', 'dây đai'],
  ['drát', 'dây thép'], ['provaz|motouz|šňůr', 'dây thừng'], ['kladk', 'ròng rọc'],
  ['napínák|napínac', 'tăng đơ'], ['karabin', 'móc khóa'],
  ['hák|háček', 'móc'], ['skob', 'đinh móc'], ['úchytk|úchyt', 'tay nắm'],
  ['konzol', 'giá đỡ'], ['pant', 'bản lề'], ['závěs', 'bản lề treo'],
  ['zámek|zámk', 'khóa'], ['vložk', 'ruột khóa'], ['petlic|zástrč|závor', 'then cài'],
- ['klik(a|y|ou)', 'tay nắm cửa'], ['kován', 'phụ kiện cửa'], ['trezor', 'két sắt'],
+ ['klik', 'tay nắm cửa'], ['kován', 'phụ kiện cửa'], ['trezor', 'két sắt'],
  ['schránk', 'hòm thư'], ['visac', 'treo'],
  ['plech', 'tấm tôn'], ['profil', 'thanh định hình'], ['mřížk', 'lưới'],
  ['pletiv', 'lưới rào'], ['palisád|plůtek', 'hàng rào'],
@@ -341,7 +341,7 @@ var STEMS = [
  ['nerez|nerezov', 'inox'], ['ocel|ocelov', 'thép'], ['železn|litin', 'gang'],
  ['hliník|hliníkov', 'nhôm'], ['mosaz|mosazn', 'đồng thau'], ['měď|měděn', 'đồng đỏ'],
  ['zinkov|pozinkov', 'mạ kẽm'], ['chrom|chromov', 'mạ crôm'], ['niklov', 'mạ niken'],
- ['dřevěn|dřev(o|a)', 'gỗ'], ['bambusov|bambus', 'tre'], ['proutí|ratan|rattan', 'mây'],
+ ['dřevěn|dřev', 'gỗ'], ['bambusov|bambus', 'tre'], ['proutí|ratan|rattan', 'mây'],
  ['keramick|keramic', 'gốm sứ'], ['sklo|skleněn', 'thủy tinh'], ['porcelán', 'sứ'],
  ['bavln', 'cotton'], ['polyester', 'polyester'], ['nylon|nylonov', 'nylon'],
  ['kožen|kůž', 'da'], ['textiln', 'vải'], ['fíbr|fibr', 'sợi fibre'],
@@ -366,7 +366,7 @@ var STEMS = [
  ['letn', 'mùa hè'], ['vnitřn', 'trong nhà'], ['vnějš|venkovn', 'ngoài trời'],
  ['závěsn', 'treo'], ['stolní|stoln', 'để bàn'], ['stojan|stojac', 'chân đế'],
  ['přenosn|mobiln', 'di động'], ['sklápěc|otočn', 'xoay'],
- ['ploch(ý|á|é)', 'dẹt'], ['kulat|kruhov', 'tròn'], ['hranat|čtvercov', 'vuông'],
+ ['ploch', 'dẹt'], ['kulat|kruhov', 'tròn'], ['hranat|čtvercov', 'vuông'],
  ['oblý|oválný|oválná', 'bầu dục'], ['špičat', 'nhọn'], ['zahnut', 'cong'],
  ['dlouh', 'dài'], ['krátk', 'ngắn'], ['širok', 'rộng'], ['úzk', 'hẹp'],
  ['velikost|vel\\.?', 'cỡ'],
@@ -424,9 +424,9 @@ var STEMS = [
  ['textil', 'vải'], ['elastan', 'thun co giãn'], ['khaki', 'kaki'],
  ['polyuretan', 'PU'], ['barev|barvách', 'màu'], ['skl(e|a|em)', 'thủy tinh'],
  // ===== bổ sung đợt 3 =====
- ['nitril', 'nitrile'], ['koul', 'quả cầu'], ['gum(a|y|ou|ov)', 'cao su'],
+ ['nitril', 'nitrile'], ['koul', 'quả cầu'], ['gum', 'cao su'],
  ['pružin', 'lò xo'], ['odstraňovač', 'chất tẩy'], ['lesk', 'độ bóng'],
- ['spodk|prádl', 'đồ lót'], ['madl', 'tay vịn'], ['ok(o|a)|očk', 'khuyên'],
+ ['spodk|prádl', 'đồ lót'], ['madl', 'tay vịn'], ['ok(o|a|y|em)|očk', 'khuyên'],
  ['okn(o|a|em)|oken', 'cửa sổ'], ['ruk(a|ou)|ruce|ručn', 'tay'], ['klip|klipem', 'kẹp'],
  ['kobalt', 'coban'], ['slitin', 'hợp kim'], ['pořez|řez', 'cắt'],
  ['kuličk', 'bi tròn'], ['diamant', 'kim cương'], ['keramik', 'gốm'],
@@ -446,6 +446,19 @@ var STEMS = [
  ['antracit', 'xám than'], ['samolep', 'tự dính'], ['zip|zipem', 'khóa kéo'],
  ['sluch', 'thính giác'], ['auto|auta', 'ô tô'], ['vod(a|u|y|ě)', 'nước'],
  ['komplet', 'trọn bộ'], ['tělo|těl', 'thân'], ['sad', 'bộ'],
+ // ===== bổ sung đợt 4 (canis / luma / richter) =====
+ ['čelist', 'má kẹp'], ['vstup', 'lối vào'], ['prostupov', 'xuyên tường'],
+ ['oděv', 'quần áo'], ['suť', 'phế thải xây dựng'], ['vzor|vzorem', 'họa tiết'],
+ ['ocask|ocaska', 'lưỡi cưa kiếm'], ['čtvereček|čtverec', 'ô vuông'],
+ ['opasek|opask', 'thắt lưng'], ['pozor', 'chú ý'], ['vnitřek|vnitřk|vnitřn', 'bên trong'],
+ ['žinylk', 'kim tuyến'], ['bambulk', 'quả bông'], ['bloček', 'giấy nhớ'],
+ ['piezo', 'piezo'], ['elektro', 'điện'], ['unisex', 'nam nữ'],
+ ['jeans|džín', 'jean'], ['antistatick', 'chống tĩnh điện'],
+ ['nehořlav', 'chống cháy'], ['prodyšn', 'thoáng khí'], ['zateplovac', 'giữ nhiệt'],
+ ['podšívk', 'lớp lót'], ['kapsa|kaps', 'túi áo'], ['manžet', 'bo tay'],
+ ['límec|límc', 'cổ áo'], ['výstřih', 'cổ khoét'], ['pas', 'eo'],
+ ['podrážk', 'đế giày'], ['špic|tužink', 'mũi thép'], ['stélk', 'lót giày'],
+ ['šněrovac', 'buộc dây'], ['membrán', 'màng'], ['reflex', 'phản quang'],
 ];
 
 // giới từ / liên từ hay gặp — khớp đúng chữ, không đuôi
@@ -453,7 +466,7 @@ var WORDS = [
  ['na', 'cho'], ['pro', 'cho'], ['do', 'cho'], ['k|ke', 'cho'],
  ['bez', 'không'], ['pod', 'dưới'], ['nad', 'trên'], ['v|ve', 'trong'],
  ['s|se', 'có'], ['z|ze', 'bằng'], ['proti', 'chống'], ['a', 'và'],
- ['nebo', 'hoặc'], ['pr\.?', 'đk'], ['tl\.?', 'dày'], ['zn\.?', 'mạ kẽm'],
+ ['nebo', 'hoặc'], ['pr\\.?', 'đk'], ['tl\\.?', 'dày'], ['zn\\.?', 'mạ kẽm'],
 ];
 
 function esc(s) { return s; }

@@ -1,0 +1,9 @@
+# Feed XML của nhà cung cấp — KHÔNG đưa lên GitHub (11 MB).
+# Giữ các file này trên máy để chạy tay:  node scripts/update-supplier-feeds.mjs
+# Nếu sau này muốn để GitHub Actions tự chạy mỗi đêm, xóa 6 dòng dưới rồi commit các file feed.
+canis-feed.xml
+pht-feed.xml
+richter-feed.xml
+denbraven-feed.xml
+luma-feed.xml
+*-feed.xml

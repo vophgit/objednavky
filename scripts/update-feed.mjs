@@ -73,10 +73,15 @@ const prods = items.map((s) => {
 if (prods.length < 10) throw new Error('Feed chỉ có ' + prods.length + ' sản phẩm — không ghi đè products.json (có thể feed lỗi).');
 // Giữ nguyên các mặt hàng đến từ nguồn khác (vd. Levior) — chỉ thay thế phần voph.cz.
 const kept = oldProducts.filter((p) => p.src && p.src !== 'voph');
-// Dispozice của TẤT CẢ hãng (Levior, df partner, ...) chỉ đọc theo EAN trùng từ feed voph.cz — không dùng tồn kho riêng của hãng đó. Không có trong feed voph → dispozice = 0.
+// Dispozice của Levior / df partner chỉ đọc theo EAN trùng từ feed voph.cz — không dùng tồn kho riêng của hãng đó. Không có trong feed voph → dispozice = 0.
+// NGOẠI LỆ: canis, pht, richter, den braven, luma có tồn kho THẬT trong feed của chính mình
+// (do scripts/update-supplier-feeds.mjs ghi vào) — không được đặt về 0, nếu không hàng của
+// 5 hãng này sẽ hiện "hết hàng" sau mỗi lần chạy feed đêm.
+const OWN_STOCK = new Set(['canis', 'pht', 'richter', 'denbraven', 'luma']);
 const eanStock = {};
 for (const p of prods) eanStock[p.ean] = p.stock;
-const keptAdj = kept.filter((p) => !prods.some((np) => np.ean === p.ean)).map((p) => Object.assign({}, p, { stock: eanStock[p.ean] ?? 0 }));
+const keptAdj = kept.filter((p) => !prods.some((np) => np.ean === p.ean))
+  .map((p) => (OWN_STOCK.has(p.src) ? p : Object.assign({}, p, { stock: eanStock[p.ean] ?? 0 })));
 const merged = prods.concat(keptAdj);
 writeFileSync(new URL('../products.json', import.meta.url), JSON.stringify(merged));
 console.log('OK — ' + prods.length + ' sản phẩm voph.cz (+ ' + (merged.length - prods.length) + ' giữ nguyên từ nguồn khác), ' + Object.keys(stock).length + ' mục tồn kho.');

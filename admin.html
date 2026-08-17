@@ -83,8 +83,8 @@ code{background:#f4f3f0;padding:1px 5px;border-radius:4px}
     <input type="text" id="grpSearch" style="flex:1;min-width:240px" placeholder="Tìm sản phẩm… (tên, kód, EAN)" oninput="renderGroups()">
     <select id="grpFilter" onchange="renderGroups()"><option value="">Tất cả nhóm</option></select>
     <label style="font-size:12px;color:#666;display:inline-flex;align-items:center;gap:5px"><input type="checkbox" id="grpOnlyOver" onchange="renderGroups()">chỉ hiện hàng đã đổi tay</label>
-    <button onclick="downloadJson(groupOver,'groups.json')">Stáhnout groups.json</button>
-    <button class="danger" onclick="groupOver={};renderGroups();msg('grpMsg','Smazáno — stáhněte a nahrajte prázdný groups.json')">Smazat vše</button>
+    <button onclick="downloadJson(buildGroupsJson(),'groups.json')">Stáhnout groups.json</button>
+    <button class="danger" onclick="groupOver={};groupL2={};renderGroups();msg('grpMsg','Smazáno — stáhněte a nahrajte prázdný groups.json')">Smazat vše</button>
     <span class="count" id="grpCount"></span>
     <span class="msg" id="grpMsg"></span>
   </div>
@@ -104,7 +104,28 @@ code{background:#f4f3f0;padding:1px 5px;border-radius:4px}
 </div>
 
 <script>
-var catalog=[],tags={},prices={},groupOver={},grpPage=0,GRP_PER=300;
+var catalog=[],tags={},prices={},groupOver={},groupL2={},groupOrder=[],grpPage=0,GRP_PER=300;
+// groups.json v2: {_format,_order:[cấp 1 theo thứ tự web], items:{EAN:[cấp1,cấp2]}}
+// groupOver = {EAN:cấp1} (dùng để hiển thị/sửa), groupL2 = {EAN:cấp2} (giữ nguyên, chỉ lưu trong file).
+function loadGroupsJson(g){
+  groupOver={};groupL2={};groupOrder=[];
+  if(!g||typeof g!=='object'||Array.isArray(g))return;
+  if(Array.isArray(g._order))groupOrder=g._order.slice();
+  var src=(g.items&&typeof g.items==='object')?g.items:g;
+  Object.keys(src).forEach(function(k){
+    if(k.charAt(0)==='_')return;
+    var v=src[k];
+    if(Array.isArray(v)){if(v[0])groupOver[k]=v[0];if(v[1])groupL2[k]=v[1];}
+    else if(v)groupOver[k]=v;
+  });
+}
+function buildGroupsJson(){
+  var items={};
+  Object.keys(groupOver).forEach(function(k){items[k]=[groupOver[k],groupL2[k]||''];});
+  var order=groupOrder.slice();
+  Object.keys(groupOver).forEach(function(k){if(order.indexOf(groupOver[k])<0)order.push(groupOver[k]);});
+  return{_format:'voph-groups-v2',_order:order,items:items};
+}
 var TAGDEFS={akce:['Akce','#e67e22','%'],sezonni:['Sezónní','#c0392b','❄'],top:['Bestseller','#a4780a','★'],vyprodej:['Výprodej','#8e44ad','⚡'],novinka:['Novinka','#1565c0','✦']};
 // Nhóm hàng = tên nhóm gốc do feed cung cấp (voph: CATEGORYTEXT, levior: cột K) — không đoán theo từ khóa nữa.
 function effGroup(p){return groupOver[p.ean]||p.group||'Ostatní'}
@@ -122,7 +143,7 @@ async function loadAll(){
       fetch(b+'prices.json').then(function(r){return r.ok?r.json():{}}).catch(function(){return{}}),
       fetch(b+'groups.json').then(function(r){return r.ok?r.json():{}}).catch(function(){return{}})
     ]);
-    catalog=Array.isArray(p)?p:[];tags=t&&!Array.isArray(t)?t:{};prices=c&&!Array.isArray(c)?c:{};groupOver=g&&!Array.isArray(g)?g:{};
+    catalog=Array.isArray(p)?p:[];tags=t&&!Array.isArray(t)?t:{};prices=c&&!Array.isArray(c)?c:{};loadGroupsJson(g);
     msg('loadMsg','Načteno: '+catalog.length+' produktů, '+Object.keys(tags).length+' štítků, '+Object.keys(prices).length+' cen ✓');
     renderPrices();renderTags();renderCat();renderGroups();
   }catch(e){msg('loadMsg','Chyba: '+e.message,1);}
@@ -221,7 +242,7 @@ function renderGroups(){
     row.innerHTML='<span class="ean">'+p.ean+'</span>'+thumbImg(p)+
       '<span class="nm">'+String(p.name).replace(/</g,'&lt;')+(over?' <strong style="color:#e67e22;font-size:10.5px">đổi tay</strong>':'')+'</span>'+
       '<select onchange="setGroup(\''+p.ean+'\',this.value)">'+allGroups().map(function(g){return'<option value="'+g+'"'+(g===cur?' selected':'')+'>'+g+'</option>'}).join('')+'</select>'+tagBtnsHtml(p.ean)+
-      (over?'<button class="danger" style="width:auto" title="trở về tự động" onclick="delete groupOver[\''+p.ean+'\'];renderGroups()">↺ tự động</button>':'');
+      (over?'<button class="danger" style="width:auto" title="trở về nhóm gốc của feed" onclick="delete groupOver[\''+p.ean+'\'];delete groupL2[\''+p.ean+'\'];renderGroups()">↺ tự động</button>':'');
     el.appendChild(row);
   });
   if(pages>1){
@@ -238,8 +259,9 @@ function renderGroups(){
   }
 }
 function setGroup(ean,g){
-  var p=catalog.find(function(x){return x.ean===ean});
-  if(p&&(p.group||'Ostatní')===g)delete groupOver[ean];else groupOver[ean]=g;
+  // groups.json giờ là nguồn chuẩn cho MỌI mặt hàng (không chỉ hàng đổi tay),
+  // nên luôn ghi vào groupOver; cấp 2 giữ nguyên vì đổi cấp 1 không nhất thiết đổi cấp 2.
+  groupOver[ean]=g;
   renderGroups();msg('grpMsg','Đã đổi — nhớ Stáhnout groups.json → upload GitHub');
 }
 async function importCatalog(input){
