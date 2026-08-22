@@ -10,48 +10,48 @@
   "on": true
  },
  "9000101132946": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 85.9,
   "on": true
  },
  "4015000419420": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 69.9,
   "on": true
  },
  "9002010294173": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 117.9,
   "on": true
  },
  "5010266423067": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 114.9,
   "on": true
  },
  "4015000429801": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 111.9,
   "on": true
  },
  "9000100671385": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 38.9,
   "on": true
  },
  "9000101158915": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 29.9,
   "on": true
  },
  "9002010294111": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 71.9,
   "on": true
  },
  "9000100224840": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 149.9,
   "on": true
  },
  "9000100671255": {
@@ -60,8 +60,8 @@
   "on": true
  },
  "9000100671293": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 71.9,
   "on": true
  },
  "8585000341985": {
@@ -85,8 +85,8 @@
   "on": true
  },
  "4015000419376": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 55.9,
   "on": true
  },
  "4015000423106": {
@@ -105,13 +105,13 @@
   "on": true
  },
  "4015000433990": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 106.9,
   "on": true
  },
  "8410020403620": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 77.9,
   "on": true
  },
  "5997272382468": {
@@ -125,8 +125,8 @@
   "on": true
  },
  "9000101159851": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 31.9,
   "on": true
  },
  "9000101170559": {
@@ -135,23 +135,23 @@
   "on": true
  },
  "4015000431095": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 111.9,
   "on": true
  },
  "4015000435932": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 99.9,
   "on": true
  },
  "9002010294289": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 109.9,
   "on": true
  },
  "4015000417495": {
-  "tag": "novinka",
-  "price": 0,
+  "tag": "akce",
+  "price": 146.9,
   "on": true
  },
  "9000100980104": {
@@ -182,6 +182,111 @@
  "9000101171471": {
   "tag": "novinka",
   "price": 0,
+  "on": true
+ },
+ "5903355002680": {
+  "tag": "akce",
+  "price": 26.9,
+  "on": false
+ },
+ "9000100956192": {
+  "tag": "akce",
+  "price": 54.9,
+  "on": true
+ },
+ "9000100753371": {
+  "tag": "akce",
+  "price": 54.9,
+  "on": true
+ },
+ "9000100753340": {
+  "tag": "akce",
+  "price": 54.9,
+  "on": true
+ },
+ "9000100753401": {
+  "tag": "akce",
+  "price": 54.9,
+  "on": false
+ },
+ "5903355002505": {
+  "tag": "akce",
+  "price": 19.9,
+  "on": true
+ },
+ "8592218015256": {
+  "tag": "akce",
+  "price": 129.9,
+  "on": true
+ },
+ "5201314198055": {
+  "tag": "akce",
+  "price": 36.9,
+  "on": true
+ },
+ "5201314198086": {
+  "tag": "akce",
+  "price": 36.9,
+  "on": true
+ },
+ "5903355002536": {
+  "tag": "akce",
+  "price": 24.9,
+  "on": false
+ },
+ "5903355003830": {
+  "tag": "akce",
+  "price": 15.9,
+  "on": false
+ },
+ "5903355000785": {
+  "tag": "akce",
+  "price": 29.9,
+  "on": true
+ },
+ "5903355000488": {
+  "tag": "akce",
+  "price": 9.9,
+  "on": false
+ },
+ "5902443010125": {
+  "tag": "akce",
+  "price": 29.9,
+  "on": true
+ },
+ "5902443990052": {
+  "tag": "akce",
+  "price": 29.9,
+  "on": true
+ },
+ "8591715459440": {
+  "tag": "akce",
+  "price": 59.9,
+  "on": true
+ },
+ "8591940228682": {
+  "tag": "akce",
+  "price": 69.9,
+  "on": true
+ },
+ "8591940082383": {
+  "tag": "akce",
+  "price": 69.9,
+  "on": true
+ },
+ "5903355009955": {
+  "tag": "akce",
+  "price": 9.9,
+  "on": true
+ },
+ "8590419736178": {
+  "tag": "akce",
+  "price": 22.9,
+  "on": true
+ },
+ "8590419736260": {
+  "tag": "akce",
+  "price": 37.9,
   "on": true
  }
 }

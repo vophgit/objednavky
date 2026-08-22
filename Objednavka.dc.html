@@ -125,7 +125,7 @@ input[type=number]{-moz-appearance:textfield}
                 <sc-if value="{{ item.hasOldPrice }}" hint-placeholder-val="{{ false }}">
                   <span style="font-size:12px;color:#aaa;text-decoration:line-through">{{ item.oldVatDisplay }}</span>
                 </sc-if>
-                <span style="font-size:18px;font-weight:700;color:{{ item.priceColor }}">{{ item.priceVatDisplay }} <span style="font-size:11px;font-weight:600">Kč s DPH</span></span>
+                <span style="font-size:{{ item.priceSize }};font-weight:700;color:{{ item.priceColor }}">{{ item.priceVatDisplay }} <span style="font-size:11px;font-weight:600">Kč s DPH</span></span>
               </span>
             </div>
             <sc-if value="{{ item.hasPack }}" hint-placeholder-val="{{ false }}">
@@ -665,6 +665,7 @@ class Component extends DCLogic {
           tagLabel: p._tag ? this.tagDefs()[p._tag][0] : '', tagVi: p._tag ? this.tagDefs()[p._tag][1] : '', tagColor: p._tag ? this.tagDefs()[p._tag][2] : '#000', tagIcon: p._tag ? this.tagDefs()[p._tag][3] : '',
           hasOldPrice: !!p._origVat, oldVatDisplay: p._origVat ? this.fmt(p._origVat) : '',
           priceColor: p._origVat ? '#c0392b' : '#0b7a3e',
+          priceSize: p._origVat ? '23px' : '18px',
         };
       })
     };});
