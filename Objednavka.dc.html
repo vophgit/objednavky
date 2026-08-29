@@ -652,8 +652,9 @@ class Component extends DCLogic {
           cardBg: q ? '#fdf1e8' : '#ffffff',
           cardBorder: q ? '#F16726' : '#e3e1db',
           inputBorder: q ? '#F16726' : '#d48db4',
-          stockColor: p.stock > 0 ? '#0b7a3e' : '#c0392b',
-          stockLabel: p.stock > 0 ? 'skladem' : '7-14 ngày',
+          // Hàng výprodej = xả kho, luôn còn hàng — không phụ thuộc feed tồn kho (update-stock.mjs ghi đè hằng ngày).
+          stockColor: (p.stock > 0 || p._tag === 'vyprodej') ? '#0b7a3e' : '#c0392b',
+          stockLabel: (p.stock > 0 || p._tag === 'vyprodej') ? 'skladem' : '7-14 ngày',
           pack: p.pack || 1, hasPack: (p.pack || 1) > 1 || (p.unit && p.unit.toLowerCase() !== 'ks'),
           packLabel: (p.pack || 1) > 1
             ? 'balení ' + (p.pack || 1) + ' ' + (p.unit || 'ks')
