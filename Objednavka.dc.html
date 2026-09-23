@@ -517,7 +517,11 @@ class Component extends DCLogic {
       const t = tags[p.ean];
       if (!t || t.on === false || !defs[t.tag]) return p;
       const d = Object.assign({}, p, { _tag: t.tag, _sk: this.searchKey(p) });
-      if (+t.price > 0) { d._origVat = p.price * VAT; d.price = Math.round(+t.price / VAT * 100) / 100; }
+      if (+t.price > 0) {
+        // Giá cũ chỉ hiện khi biết giá gốc (>0) và cao hơn giá akce — không có thông tin thì không gạch giá.
+        if (+p.price > 0 && p.price * VAT > +t.price + 0.005) d._origVat = p.price * VAT;
+        d._promo = true; d.price = Math.round(+t.price / VAT * 100) / 100;
+      }
       return d;
     });
     this._decoCache = { catalog, baseTags: s.baseTags, tags: s.tags, basePrices: s.basePrices,
@@ -665,8 +669,8 @@ class Component extends DCLogic {
           hasTag: !!p._tag,
           tagLabel: p._tag ? this.tagDefs()[p._tag][0] : '', tagVi: p._tag ? this.tagDefs()[p._tag][1] : '', tagColor: p._tag ? this.tagDefs()[p._tag][2] : '#000', tagIcon: p._tag ? this.tagDefs()[p._tag][3] : '',
           hasOldPrice: !!p._origVat, oldVatDisplay: p._origVat ? this.fmt(p._origVat) : '',
-          priceColor: p._origVat ? '#c0392b' : '#0b7a3e',
-          priceSize: p._origVat ? '23px' : '18px',
+          priceColor: p._promo ? '#c0392b' : '#0b7a3e',
+          priceSize: p._promo ? '23px' : '18px',
         };
       })
     };});
