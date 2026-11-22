@@ -250,6 +250,9 @@ input[type=number]{-moz-appearance:textfield}
     <div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:min(78vw,420px);height:150px;border:3px solid #2ee06b;border-radius:12px;box-shadow:0 0 0 200vmax rgba(0,0,0,.55)"></div>
     <div style="position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);width:min(72vw,390px);height:2px;background:rgba(46,224,107,.65)"></div>
     <p style="position:absolute;left:16px;right:16px;top:calc(44% + 92px);text-align:center;color:#fff;font-size:14.5px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.8);margin:0">Namiřte čárový kód do zeleného rámečku<br /><span style="font-weight:400;opacity:.85">Đưa mã vạch vào trong khung xanh — chỉ đọc mã trong khung (không đọc QR)</span></p>
+    <sc-if value="{{ scanLoading }}" hint-placeholder-val="{{ false }}">
+      <p style="position:absolute;left:16px;right:16px;top:calc(44% - 120px);text-align:center;color:#fff;font-size:14px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.8);margin:0">Načítám čtečku kódů… / Đang tải bộ đọc mã…</p>
+    </sc-if>
     <button onClick="{{ closeScan }}" style="position:absolute;top:16px;right:16px;padding:10px 18px;border:1px solid rgba(255,255,255,.6);border-radius:8px;background:rgba(0,0,0,.45);color:#fff;font-size:14px;font-weight:600;cursor:pointer">✕ Zavřít / Đóng</button>
   </div>
 </sc-if>
@@ -416,20 +419,69 @@ class Component extends DCLogic {
     if (!url || (window.CONFIG || {}).imgThumbs === false) return url || '';
     return 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=260&h=260&fit=inside&output=webp&q=72';
   }
+  loadScanLib() {
+    // iPhone/iPad: Safari (và mọi trình duyệt trên iOS) chưa bật BarcodeDetector → nạp bộ đọc ZXing (WebAssembly) dự phòng
+    const api = window.BarcodeDetectionAPI;
+    if (api && api.BarcodeDetector) return Promise.resolve(api.BarcodeDetector);
+    if (this._libP) return this._libP;
+    this._libP = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/barcode-detector@3.2.4/dist/iife/ponyfill.min.js';
+      s.async = true;
+      s.onload = () => { const a = window.BarcodeDetectionAPI; a && a.BarcodeDetector ? res(a.BarcodeDetector) : rej(new Error('lib')); };
+      s.onerror = () => rej(new Error('lib'));
+      document.head.appendChild(s);
+    }).catch(e => { this._libP = null; throw Object.assign(new Error('lib'), { name: 'LibError' }); });
+    return this._libP;
+  }
+  async makeDetector() {
+    const want = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'codabar'];
+    if ('BarcodeDetector' in window) {
+      try {
+        const sup = await window.BarcodeDetector.getSupportedFormats();
+        const f = want.filter(x => sup.includes(x));
+        if (f.length) return new window.BarcodeDetector({ formats: f });
+      } catch (e) {}
+    }
+    const BD = await this.loadScanLib();
+    const det = new BD({ formats: want });
+    // nạp sẵn file .wasm (~1 MB) ngay lúc mở, để lần đọc mã đầu tiên không bị chậm
+    const c = document.createElement('canvas'); c.width = 8; c.height = 8;
+    await det.detect(c).catch(() => {});
+    return det;
+  }
+  attachVideo(el) {
+    // iOS: video phải muted + playsinline thì mới phát được trong trang (không bật toàn màn hình)
+    el.muted = true; el.setAttribute('muted', ''); el.setAttribute('playsinline', ''); el.setAttribute('webkit-playsinline', '');
+    if (!this._stream) return;
+    if (el.srcObject !== this._stream) el.srcObject = this._stream;
+    el.play().catch(() => {});
+  }
   async openScan() {
-    if (!('BarcodeDetector' in window)) { this.setState({ scanErr: 'Prohlížeč nepodporuje skenování — použijte Chrome/Edge na telefonu. / Trình duyệt không hỗ trợ quét mã — hãy dùng Chrome trên điện thoại.' }); return; }
+    if (this._opening) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.setState({ scanErr: 'Kamera není v tomto prohlížeči dostupná — otevřete stránku v Safari nebo Chrome. / Trình duyệt này không cho dùng camera — hãy mở trang bằng Safari hoặc Chrome (không mở trong Zalo/Messenger/Facebook).' });
+      return;
+    }
+    this._opening = true;
+    this.setState({ scanErr: '' });
     try {
-      const supported = await window.BarcodeDetector.getSupportedFormats();
-      const want = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'itf', 'codabar'].filter(f => supported.includes(f));
-      if (!want.length) throw Object.assign(new Error(), { name: 'NoFormats' });
-      this._detector = new window.BarcodeDetector({ formats: want });
+      // mở camera NGAY khi bấm nút (iPhone cần vậy), sau đó mới chuẩn bị bộ đọc mã
       this._stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
-      this.setState({ scanOpen: true, scanErr: '' });
-      if (this._video) { this._video.srcObject = this._stream; this._video.play().catch(() => {}); }
+      this.setState({ scanOpen: true, scanLoading: true });
+      if (this._video) this.attachVideo(this._video);
+      const det = await this.makeDetector();
+      if (!this._stream) return; // đã bấm Đóng trong lúc đang tải
+      this._detector = det;
+      this.setState({ scanLoading: false });
       this._scanTimer = setInterval(() => this.scanTick(), 220);
     } catch (e) {
       this.stopScan();
-      this.setState({ scanErr: e.name === 'NotAllowedError' ? 'Přístup ke kameře byl zamítnut. / Bạn chưa cho phép dùng camera — hãy cấp quyền camera cho trang.' : 'Kameru se nepodařilo spustit. / Không mở được camera.' });
+      this.setState({ scanErr: e.name === 'NotAllowedError' ? 'Přístup ke kameře byl zamítnut. / Bạn chưa cho phép dùng camera — hãy cho phép Camera cho trang này trong cài đặt Safari/Chrome, rồi tải lại trang.'
+        : e.name === 'LibError' ? 'Nepodařilo se načíst čtečku kódů — zkontrolujte internet. / Không tải được bộ đọc mã — kiểm tra kết nối mạng rồi thử lại.'
+        : 'Kameru se nepodařilo spustit. / Không mở được camera.' });
+    } finally {
+      this._opening = false;
     }
   }
   scanTick() {
@@ -445,16 +497,18 @@ class Component extends DCLogic {
     const c = this._canvas || (this._canvas = document.createElement('canvas'));
     c.width = Math.max(1, Math.round(sw)); c.height = Math.max(1, Math.round(sh));
     c.getContext('2d').drawImage(v, x0, y0, sw, sh, 0, 0, c.width, c.height);
+    if (this._busy) return;
+    this._busy = true;
     this._detector.detect(c).then(codes => {
       const hit = (codes || []).find(b => b.format !== 'qr_code' && b.rawValue);
       if (hit && this.state.scanOpen) { this.setState({ filter: hit.rawValue, filterDraft: hit.rawValue }); this.stopScan(); }
-    }).catch(() => {});
+    }).catch(() => {}).then(() => { this._busy = false; });
   }
   stopScan() {
     if (this._scanTimer) { clearInterval(this._scanTimer); this._scanTimer = null; }
     if (this._stream) { this._stream.getTracks().forEach(t => t.stop()); this._stream = null; }
-    this._detector = null;
-    if (this.state.scanOpen) this.setState({ scanOpen: false });
+    this._detector = null; this._busy = false;
+    if (this.state.scanOpen || this.state.scanLoading) this.setState({ scanOpen: false, scanLoading: false });
   }
   componentWillUnmount() { this.stopScan(); if (this._headerRO) this._headerRO.disconnect(); }
   watchHeader(el) {
@@ -722,7 +776,7 @@ class Component extends DCLogic {
       clearFilter: () => this.setState({ filterDraft: '', filter: '' }),
       sort: this.state.sort, onSort: (e) => this.setState({ sort: e.target.value }),
       custTag: this.state.custTag, onCustTag: (e) => this.setState({ custTag: e.target.value }),
-      scanOpen: this.state.scanOpen, scanErr: this.state.scanErr,
+      scanOpen: this.state.scanOpen, scanErr: this.state.scanErr, scanLoading: !!this.state.scanLoading,
       orderOpen: this.state.orderOpen, adminMode: this.state.adminMode,
       openOrder: () => this.setState({ orderOpen: true, sendError: '' }),
       closeOrder: () => this.setState({ orderOpen: false }),
@@ -744,7 +798,7 @@ class Component extends DCLogic {
       headerRef: (el) => this.watchHeader(el),
       openScan: () => this.openScan(),
       closeScan: () => this.stopScan(),
-      videoRef: (el) => { this._video = el; if (el && this._stream) { el.srcObject = this._stream; el.play().catch(() => {}); } },
+      videoRef: (el) => { this._video = el; if (el) this.attachVideo(el); },
       groupSel: this.state.groupSel, onGroupSel: (e) => this.setState({ groupSel: e.target.value }),
       groupOptions,
       tagFilter: this.state.tagFilter, onTagFilter: (e) => this.setState({ tagFilter: e.target.value }),
